@@ -25,6 +25,16 @@ public sealed class WakeWordDetector : IWakeWordDetector
     private const int SampleRate = 16000;
     private const int BufferSize = 4000; // ~250ms of audio at 16kHz mono 16-bit
 
+    /// <summary>
+    /// Maximum number of times to retry starting audio capture before giving up.
+    /// </summary>
+    public const int MaxAudioCaptureRetries = 3;
+
+    /// <summary>
+    /// Delay between audio capture retry attempts.
+    /// </summary>
+    public static readonly TimeSpan AudioRetryDelay = TimeSpan.FromSeconds(2);
+
     public string WakeWord { get; set; } = "hey focus";
     public bool IsListening { get; private set; }
 
@@ -43,65 +53,94 @@ public sealed class WakeWordDetector : IWakeWordDetector
         EnsureModel();
         IsListening = true;
 
-        Process? arecord = null;
         try
         {
-            arecord = StartAudioCapture();
-            if (arecord?.StandardOutput.BaseStream is null)
+            for (var attempt = 0; attempt < MaxAudioCaptureRetries; attempt++)
             {
-                _logger.LogError("Failed to start audio capture process");
-                return false;
-            }
+                if (ct.IsCancellationRequested)
+                    return false;
 
-            using var recognizer = new VoskRecognizer(_model!, SampleRate);
-            recognizer.SetMaxAlternatives(0);
-            recognizer.SetWords(true);
-
-            var buffer = new byte[BufferSize];
-            var stream = arecord.StandardOutput.BaseStream;
-
-            _logger.LogDebug("Wake word detector listening for '{WakeWord}'...", WakeWord);
-
-            while (!ct.IsCancellationRequested)
-            {
-                int bytesRead;
+                Process? arecord = null;
                 try
                 {
-                    bytesRead = await stream.ReadAsync(buffer, ct);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-
-                if (bytesRead == 0)
-                {
-                    // Stream ended — arecord process may have died
-                    _logger.LogWarning("Audio capture stream ended unexpectedly");
-                    break;
-                }
-
-                // Feed audio to Vosk — check both partial and final results
-                if (recognizer.AcceptWaveform(buffer, bytesRead))
-                {
-                    var result = recognizer.Result();
-                    if (ContainsWakeWord(result))
+                    arecord = StartAudioCapture();
+                    if (arecord?.StandardOutput.BaseStream is null)
                     {
-                        _logger.LogInformation("Wake word detected (final): '{WakeWord}'", WakeWord);
-                        return true;
+                        _logger.LogError("Failed to start audio capture process (attempt {Attempt}/{Max})",
+                            attempt + 1, MaxAudioCaptureRetries);
+                        await DelayBeforeRetry(attempt, ct);
+                        continue;
                     }
-                }
-                else
-                {
-                    var partial = recognizer.PartialResult();
-                    if (ContainsWakeWord(partial))
+
+                    using var recognizer = new VoskRecognizer(_model!, SampleRate);
+                    recognizer.SetMaxAlternatives(0);
+                    recognizer.SetWords(true);
+
+                    var buffer = new byte[BufferSize];
+                    var stream = arecord.StandardOutput.BaseStream;
+
+                    _logger.LogDebug("Wake word detector listening for '{WakeWord}'...", WakeWord);
+
+                    while (!ct.IsCancellationRequested)
                     {
-                        _logger.LogInformation("Wake word detected (partial): '{WakeWord}'", WakeWord);
-                        return true;
+                        int bytesRead;
+                        try
+                        {
+                            bytesRead = await stream.ReadAsync(buffer, ct);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            return false;
+                        }
+
+                        if (bytesRead == 0)
+                        {
+                            // Stream ended — arecord process died. Capture stderr for diagnostics.
+                            var stderr = await ReadProcessStderrAsync(arecord);
+                            _logger.LogWarning(
+                                "Audio capture stream ended unexpectedly (attempt {Attempt}/{Max}).{StdErr}",
+                                attempt + 1, MaxAudioCaptureRetries,
+                                string.IsNullOrWhiteSpace(stderr) ? "" : $" arecord stderr: {stderr}");
+                            break; // Break inner loop to retry
+                        }
+
+                        // Feed audio to Vosk — check both partial and final results
+                        if (recognizer.AcceptWaveform(buffer, bytesRead))
+                        {
+                            var result = recognizer.Result();
+                            if (ContainsWakeWord(result))
+                            {
+                                _logger.LogInformation("Wake word detected (final): '{WakeWord}'", WakeWord);
+                                return true;
+                            }
+                        }
+                        else
+                        {
+                            var partial = recognizer.PartialResult();
+                            if (ContainsWakeWord(partial))
+                            {
+                                _logger.LogInformation("Wake word detected (partial): '{WakeWord}'", WakeWord);
+                                return true;
+                            }
+                        }
                     }
+
+                    // If we broke out of the inner while due to cancellation, don't retry
+                    if (ct.IsCancellationRequested)
+                        return false;
+
+                    // Wait before retrying audio capture
+                    await DelayBeforeRetry(attempt, ct);
+                }
+                finally
+                {
+                    StopProcess(arecord);
                 }
             }
 
+            _logger.LogError(
+                "Audio capture failed after {Max} attempts. Check that a microphone is available and arecord works.",
+                MaxAudioCaptureRetries);
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -112,8 +151,42 @@ public sealed class WakeWordDetector : IWakeWordDetector
         finally
         {
             IsListening = false;
-            StopProcess(arecord);
         }
+    }
+
+    /// <summary>
+    /// Waits before retrying audio capture with a simple linear backoff.
+    /// </summary>
+    private static async Task DelayBeforeRetry(int attempt, CancellationToken ct)
+    {
+        var delay = AudioRetryDelay * (attempt + 1);
+        try
+        {
+            await Task.Delay(delay, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Shutting down — that's fine
+        }
+    }
+
+    /// <summary>
+    /// Reads stderr from the arecord process to provide diagnostic info.
+    /// </summary>
+    private static async Task<string> ReadProcessStderrAsync(Process process)
+    {
+        try
+        {
+            if (process.HasExited)
+            {
+                return await process.StandardError.ReadToEndAsync();
+            }
+        }
+        catch
+        {
+            // Best-effort
+        }
+        return string.Empty;
     }
 
     public async ValueTask DisposeAsync()
