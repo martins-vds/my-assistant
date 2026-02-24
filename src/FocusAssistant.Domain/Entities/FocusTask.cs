@@ -31,6 +31,7 @@ public sealed class FocusTask
         Name = name.Trim();
         Status = TaskStatus.InProgress;
         CreatedAt = DateTime.UtcNow;
+        TimeLogs.Add(new TimeLogEntry(DateTime.UtcNow));
     }
 
     public void Start()

@@ -11,6 +11,7 @@ public sealed class TaskTrackingServiceTests
 {
     private readonly ITaskRepository _taskRepo = Substitute.For<ITaskRepository>();
     private readonly ISessionRepository _sessionRepo = Substitute.For<ISessionRepository>();
+    private readonly IUserPreferencesRepository _prefsRepo = Substitute.For<IUserPreferencesRepository>();
 
     private TaskTrackingService CreateService()
     {
@@ -23,7 +24,7 @@ public sealed class TaskTrackingServiceTests
         _taskRepo.SaveAllAsync(Arg.Any<IEnumerable<FocusTask>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        return new TaskTrackingService(_taskRepo, _sessionRepo);
+        return new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public sealed class TaskTrackingServiceTests
         _sessionRepo.SaveAsync(Arg.Any<WorkSession>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var sut = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var sut = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await sut.InitializeAsync();
 
         Assert.True(sut.HasTaskWithName("Existing Task"));
@@ -52,7 +53,7 @@ public sealed class TaskTrackingServiceTests
         _sessionRepo.GetLatestAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<WorkSession?>(session));
 
-        var sut = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var sut = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await sut.InitializeAsync();
 
         // Should not create a new session
@@ -69,7 +70,7 @@ public sealed class TaskTrackingServiceTests
         _sessionRepo.SaveAsync(Arg.Any<WorkSession>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var sut = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var sut = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await sut.InitializeAsync();
 
         await _sessionRepo.Received(1).SaveAsync(Arg.Any<WorkSession>(), Arg.Any<CancellationToken>());

@@ -1,21 +1,26 @@
 using FocusAssistant.Application.Interfaces;
 using FocusAssistant.Application.Services;
+using FocusAssistant.Application.UseCases;
 using FocusAssistant.Cli.Agent;
+using FocusAssistant.Domain.Repositories;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FocusAssistant.Cli.HostedServices;
 
 /// <summary>
-/// Background service that periodically checks for idle check-ins and paused-task
-/// reminders, then sends proactive prompts via the CopilotAgentSession.
+/// Background service that periodically checks for idle check-ins, paused-task
+/// reminders, and scheduled reflection time, then sends proactive prompts via the CopilotAgentSession.
 /// </summary>
 public sealed class ReminderBackgroundService : BackgroundService
 {
     private readonly ReminderScheduler _scheduler;
     private readonly IVoiceOutputService _output;
     private readonly CopilotAgentSession _agentSession;
+    private readonly IUserPreferencesRepository _prefsRepository;
+    private readonly StartReflectionUseCase _startReflection;
     private readonly ILogger<ReminderBackgroundService> _logger;
+    private bool _reflectionPromptedToday;
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(30);
 
@@ -23,11 +28,15 @@ public sealed class ReminderBackgroundService : BackgroundService
         ReminderScheduler scheduler,
         IVoiceOutputService output,
         CopilotAgentSession agentSession,
+        IUserPreferencesRepository prefsRepository,
+        StartReflectionUseCase startReflection,
         ILogger<ReminderBackgroundService> logger)
     {
         _scheduler = scheduler;
         _output = output;
         _agentSession = agentSession;
+        _prefsRepository = prefsRepository;
+        _startReflection = startReflection;
         _logger = logger;
     }
 
@@ -89,6 +98,41 @@ public sealed class ReminderBackgroundService : BackgroundService
             {
                 await _output.SpeakAsync(response, ct);
                 _scheduler.RecordInteraction();
+            }
+        }
+
+        // Check scheduled reflection time
+        await CheckReflectionTimeAsync(ct);
+    }
+
+    private async Task CheckReflectionTimeAsync(CancellationToken ct)
+    {
+        if (_reflectionPromptedToday)
+            return;
+
+        var prefs = await _prefsRepository.GetAsync(ct);
+        if (prefs?.AutomaticReflectionTime is null)
+            return;
+
+        var now = TimeOnly.FromDateTime(DateTime.Now);
+        var reflectionTime = prefs.AutomaticReflectionTime.Value;
+
+        // Check if current time is within the check window of the reflection time
+        var minutesSinceReflectionTime = (now.ToTimeSpan() - reflectionTime.ToTimeSpan()).TotalMinutes;
+        if (minutesSinceReflectionTime >= 0 && minutesSinceReflectionTime < 2)
+        {
+            _logger.LogInformation("Scheduled reflection time reached");
+            _reflectionPromptedToday = true;
+
+            var reflectionResult = await _startReflection.ExecuteAsync(ct);
+            if (reflectionResult.IsSuccess)
+            {
+                var response = await _agentSession.SendCommandAsync(
+                    $"[SYSTEM] It's reflection time! Here's the daily summary:\n{reflectionResult.Summary}\n" +
+                    "Present this to the user and guide them through setting priorities for tomorrow.");
+
+                if (!string.IsNullOrWhiteSpace(response))
+                    await _output.SpeakAsync(response, ct);
             }
         }
     }

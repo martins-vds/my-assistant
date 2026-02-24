@@ -141,4 +141,177 @@ public static class ToolDefinitions
                 new AIFunctionFactoryOptions { Name = "get_current_task", Description = "Get the name and status of the currently active task." })
         ];
     }
+
+    /// <summary>
+    /// Creates AI function tools for the reminder system (US2).
+    /// </summary>
+    public static IList<AIFunction> CreateReminderTools(SetReminderUseCase setReminder)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async ([Description("Reminder interval in minutes")] double minutes,
+                       [Description("Task name to set reminder for (optional, sets global default if omitted)")] string? taskName = null) =>
+                {
+                    var result = await setReminder.ExecuteAsync(minutes, taskName);
+                    if (!result.IsSuccess)
+                        return result.ErrorMessage ?? "Failed to set reminder.";
+                    return result.Message ?? "Reminder set.";
+                },
+                new AIFunctionFactoryOptions { Name = "set_reminder", Description = "Set a reminder interval for a specific task or the global default. Interval is in minutes." })
+        ];
+    }
+
+    /// <summary>
+    /// Creates AI function tools for task notes (US3).
+    /// </summary>
+    public static IList<AIFunction> CreateNoteTools(AddNoteUseCase addNote, GetTaskNotesUseCase getTaskNotes)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async ([Description("The note content to record")] string content,
+                       [Description("Task name to attach note to (optional, defaults to current task)")] string? taskName = null,
+                       [Description("Store as standalone note if no task is active")] bool standalone = false) =>
+                {
+                    var result = await addNote.ExecuteAsync(content, taskName, standalone);
+                    if (result.RequiresTaskSelection)
+                        return "No task is currently active. Which task should I attach this note to? Or say 'standalone' to save it without a task.";
+                    if (!result.IsSuccess)
+                        return result.ErrorMessage ?? "Failed to add note.";
+                    return result.TaskName is not null
+                        ? $"Note added to '{result.TaskName}'."
+                        : "Standalone note saved.";
+                },
+                new AIFunctionFactoryOptions { Name = "add_note", Description = "Add a timestamped note to the current task, a specific task by name, or as a standalone note." }),
+
+            AIFunctionFactory.Create(
+                async ([Description("Task name to get notes for (optional, defaults to current task)")] string? taskName = null) =>
+                {
+                    var result = await getTaskNotes.ExecuteAsync(taskName);
+                    if (!result.IsSuccess)
+                        return result.ErrorMessage ?? "Failed to get notes.";
+                    if (result.Notes.Count == 0)
+                    {
+                        var target = result.TaskName ?? "standalone";
+                        return $"No notes found for {target}.";
+                    }
+
+                    var header = result.TaskName is not null
+                        ? $"Notes for '{result.TaskName}':"
+                        : "Standalone notes:";
+
+                    var lines = result.Notes.Select(n =>
+                        $"  [{n.CreatedAt:HH:mm}] {n.Content}");
+
+                    return $"{header}\n{string.Join("\n", lines)}";
+                },
+                new AIFunctionFactoryOptions { Name = "get_task_notes", Description = "Get all notes for a task or the current task. Returns standalone notes if no task is active." })
+        ];
+    }
+
+    /// <summary>
+    /// Creates AI function tools for end-of-day reflection (US4).
+    /// </summary>
+    public static IList<AIFunction> CreateReflectionTools(
+        StartReflectionUseCase startReflection,
+        SetPrioritiesUseCase setPriorities,
+        GetOpenTasksUseCase getOpenTasks)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async () =>
+                {
+                    var result = await startReflection.ExecuteAsync();
+                    return result.Summary ?? "Unable to generate daily summary.";
+                },
+                new AIFunctionFactoryOptions { Name = "start_reflection", Description = "Start an end-of-day reflection. Returns a summary of completed tasks, open tasks, time spent, and standalone notes." }),
+
+            AIFunctionFactory.Create(
+                async ([Description("Ordered list of task names by priority (highest first)")] string[] taskNames,
+                       [Description("Optional note to add to the plan")] string? note = null) =>
+                {
+                    var result = await setPriorities.ExecuteAsync(taskNames, note);
+                    if (!result.IsSuccess)
+                        return result.ErrorMessage ?? "Failed to set priorities.";
+                    return $"Priorities set for {result.PlanDate:yyyy-MM-dd}: {string.Join(" → ", result.OrderedTaskNames)}";
+                },
+                new AIFunctionFactoryOptions { Name = "set_priorities", Description = "Set priority order for open tasks for tomorrow. Task names should be ordered from highest to lowest priority." }),
+
+            AIFunctionFactory.Create(
+                async () =>
+                {
+                    var result = await getOpenTasks.ExecuteAsync();
+                    if (result.Tasks.Count == 0)
+                        return "No tasks today. Nothing to summarize.";
+
+                    var lines = result.Tasks.Select(t =>
+                    {
+                        var status = t.IsCurrent ? "IN PROGRESS" : "PAUSED";
+                        var time = t.TimeSpentToday > TimeSpan.Zero
+                            ? $" ({t.TimeSpentToday:h\\:mm} today)"
+                            : "";
+                        return $"  [{status}] {t.Name}{time}";
+                    });
+
+                    return $"Daily summary:\n{string.Join("\n", lines)}";
+                },
+                new AIFunctionFactoryOptions { Name = "get_daily_summary", Description = "Get a summary of today's tasks with status and time spent." })
+        ];
+    }
+
+    /// <summary>
+    /// Creates AI function tools for morning briefing (US5).
+    /// </summary>
+    public static IList<AIFunction> CreateBriefingTools(GetMorningBriefingUseCase getMorningBriefing)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async () =>
+                {
+                    var result = await getMorningBriefing.ExecuteAsync();
+                    return result.Briefing ?? "Unable to generate morning briefing.";
+                },
+                new AIFunctionFactoryOptions { Name = "get_morning_briefing", Description = "Get the morning briefing with yesterday's priorities, open tasks, and carry-over information." })
+        ];
+    }
+
+    /// <summary>
+    /// Creates AI function tools for preference management (Onboarding).
+    /// </summary>
+    public static IList<AIFunction> CreatePreferenceTools(SavePreferencesUseCase savePreferences)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async ([Description("Default reminder interval in minutes (e.g., 30)")] double? reminderIntervalMinutes = null,
+                       [Description("Idle check-in threshold in minutes (e.g., 15)")] double? idleThresholdMinutes = null,
+                       [Description("Automatic reflection time in HH:mm format (e.g., '17:00') or 'none' to disable")] string? reflectionTime = null,
+                       [Description("Wake word phrase (e.g., 'Hey Focus')")] string? wakeWord = null) =>
+                {
+                    var result = await savePreferences.ExecuteAsync(reminderIntervalMinutes, idleThresholdMinutes, reflectionTime, wakeWord);
+                    return result.Message ?? (result.IsSuccess ? "Preferences saved." : "Failed to save preferences.");
+                },
+                new AIFunctionFactoryOptions { Name = "save_preferences", Description = "Save user preferences during onboarding or update all preferences at once. All parameters are optional — only provided values are changed." }),
+
+            AIFunctionFactory.Create(
+                async ([Description("Name of the setting to update: reminder_interval, idle_threshold, reflection_time, or wake_word")] string settingName,
+                       [Description("New value for the setting")] string value) =>
+                {
+                    var result = await savePreferences.UpdateAsync(settingName, value);
+                    return result.Message ?? (result.IsSuccess ? "Setting updated." : "Failed to update setting.");
+                },
+                new AIFunctionFactoryOptions { Name = "update_preferences", Description = "Update a single user preference by name. Available settings: reminder_interval (minutes), idle_threshold (minutes), reflection_time (HH:mm or 'none'), wake_word." }),
+
+            AIFunctionFactory.Create(
+                async () =>
+                {
+                    var result = await savePreferences.GetCurrentAsync();
+                    return result.Summary ?? "No preferences configured yet.";
+                },
+                new AIFunctionFactoryOptions { Name = "get_preferences", Description = "Get the current user preferences including reminder interval, idle threshold, reflection time, and wake word." })
+        ];
+    }
 }

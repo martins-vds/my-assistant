@@ -10,6 +10,7 @@ public sealed class CreateTaskUseCaseTests
 {
     private readonly ITaskRepository _taskRepo = Substitute.For<ITaskRepository>();
     private readonly ISessionRepository _sessionRepo = Substitute.For<ISessionRepository>();
+    private readonly IUserPreferencesRepository _prefsRepo = Substitute.For<IUserPreferencesRepository>();
 
     private async Task<(CreateTaskUseCase UseCase, TaskTrackingService Service)> CreateAsync()
     {
@@ -22,7 +23,7 @@ public sealed class CreateTaskUseCaseTests
         _taskRepo.SaveAllAsync(Arg.Any<IEnumerable<FocusTask>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var service = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var service = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await service.InitializeAsync();
         return (new CreateTaskUseCase(service), service);
     }

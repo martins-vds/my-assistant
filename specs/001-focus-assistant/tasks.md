@@ -129,19 +129,19 @@
 
 ### Implementation for User Story 2
 
-- [ ] T042 [US2] Create `ReminderScheduler` service that tracks idle time and paused-task durations, emits reminder events in `src/FocusAssistant.Application/Services/ReminderScheduler.cs`
-- [ ] T043 [US2] Create `SetReminderUseCase` for setting per-task reminder intervals in `src/FocusAssistant.Application/UseCases/SetReminderUseCase.cs`
-- [ ] T044 [US2] Create `ReminderBackgroundService` as `BackgroundService` that periodically checks `ReminderScheduler` and sends proactive prompts via `CopilotAgentSession` in `src/FocusAssistant.Cli/HostedServices/ReminderBackgroundService.cs`
-- [ ] T045 [US2] Add idle-detection logic in `VoiceListenerService` — track last interaction timestamp and report to `ReminderScheduler` in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
-- [ ] T046 [US2] Define Copilot tool `set_reminder` for per-task reminder override in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T047 [US2] Update system prompt with reminder behavior rules: idle check-in, paused-task reminders, no interruption during focus, suggest paused task after completion in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
-- [ ] T048 [US2] Add post-completion suggestion logic: when `CompleteTaskUseCase` runs, query paused tasks and include suggestion in response in `src/FocusAssistant.Application/UseCases/CompleteTaskUseCase.cs`
-- [ ] T049 [US2] Wire up `ReminderScheduler` and `ReminderBackgroundService` in DI registration in `src/FocusAssistant.Cli/Program.cs`
+- [X] T042 [US2] Create `ReminderScheduler` service that tracks idle time and paused-task durations, emits reminder events in `src/FocusAssistant.Application/Services/ReminderScheduler.cs`
+- [X] T043 [US2] Create `SetReminderUseCase` for setting per-task reminder intervals in `src/FocusAssistant.Application/UseCases/SetReminderUseCase.cs`
+- [X] T044 [US2] Create `ReminderBackgroundService` as `BackgroundService` that periodically checks `ReminderScheduler` and sends proactive prompts via `CopilotAgentSession` in `src/FocusAssistant.Cli/HostedServices/ReminderBackgroundService.cs`
+- [X] T045 [US2] Add idle-detection logic in `VoiceListenerService` — track last interaction timestamp and report to `ReminderScheduler` in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
+- [X] T046 [US2] Define Copilot tool `set_reminder` for per-task reminder override in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T047 [US2] Update system prompt with reminder behavior rules: idle check-in, paused-task reminders, no interruption during focus, suggest paused task after completion in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T048 [US2] Add post-completion suggestion logic: when `CompleteTaskUseCase` runs, query paused tasks and include suggestion in response in `src/FocusAssistant.Application/UseCases/CompleteTaskUseCase.cs`
+- [X] T049 [US2] Wire up `ReminderScheduler` and `ReminderBackgroundService` in DI registration in `src/FocusAssistant.Cli/Program.cs`
 
 **TDD**: Write failing tests before implementing use cases above.
 
-- [ ] T107 [US2] Write unit tests for `ReminderScheduler` (idle detection, reminder intervals, per-task overrides, suppression during focus) in `tests/FocusAssistant.Application.Tests/Services/ReminderSchedulerTests.cs`
-- [ ] T108 [US2] Write unit tests for `SetReminderUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/SetReminderUseCaseTests.cs`
+- [X] T107 [US2] Write unit tests for `ReminderScheduler` (idle detection, reminder intervals, per-task overrides, suppression during focus) in `tests/FocusAssistant.Application.Tests/Services/ReminderSchedulerTests.cs`
+- [X] T108 [US2] Write unit tests for `SetReminderUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/SetReminderUseCaseTests.cs`
 
 **Checkpoint**: Assistant proactively checks in after idle periods, reminds about paused tasks, does not interrupt during focus, and suggests paused tasks after completion. All US2 unit tests pass.
 
@@ -155,17 +155,17 @@
 
 ### Implementation for User Story 3
 
-- [ ] T050 [US3] Create `AddNoteUseCase` that attaches a timestamped note to the current or specified task in `src/FocusAssistant.Application/UseCases/AddNoteUseCase.cs`
-- [ ] T051 [US3] Create `GetTaskNotesUseCase` that retrieves all notes for a task in chronological order in `src/FocusAssistant.Application/UseCases/GetTaskNotesUseCase.cs`
-- [ ] T052 [US3] Update `SwitchTaskUseCase` to read back the most recent note when resuming a previously paused task in `src/FocusAssistant.Application/UseCases/SwitchTaskUseCase.cs`
-- [ ] T053 [US3] Handle standalone notes edge case: when no task is active, `AddNoteUseCase` returns prompt asking which task to attach to (or stores as standalone) in `src/FocusAssistant.Application/UseCases/AddNoteUseCase.cs`
-- [ ] T054 [US3] Define Copilot tools `add_note` and `get_task_notes` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T055 [US3] Update system prompt with note-taking instructions and automatic note readback behavior in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T050 [US3] Create `AddNoteUseCase` that attaches a timestamped note to the current or specified task in `src/FocusAssistant.Application/UseCases/AddNoteUseCase.cs`
+- [X] T051 [US3] Create `GetTaskNotesUseCase` that retrieves all notes for a task in chronological order in `src/FocusAssistant.Application/UseCases/GetTaskNotesUseCase.cs`
+- [X] T052 [US3] Update `SwitchTaskUseCase` to read back the most recent note when resuming a previously paused task in `src/FocusAssistant.Application/UseCases/SwitchTaskUseCase.cs`
+- [X] T053 [US3] Handle standalone notes edge case: when no task is active, `AddNoteUseCase` returns prompt asking which task to attach to (or stores as standalone) in `src/FocusAssistant.Application/UseCases/AddNoteUseCase.cs`
+- [X] T054 [US3] Define Copilot tools `add_note` and `get_task_notes` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T055 [US3] Update system prompt with note-taking instructions and automatic note readback behavior in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 
 **TDD**: Write failing tests before implementing use cases above.
 
-- [ ] T109 [US3] Write unit tests for `AddNoteUseCase` (attach to task, standalone note handling, timestamp) in `tests/FocusAssistant.Application.Tests/UseCases/AddNoteUseCaseTests.cs`
-- [ ] T110 [US3] Write unit tests for `GetTaskNotesUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/GetTaskNotesUseCaseTests.cs`
+- [X] T109 [US3] Write unit tests for `AddNoteUseCase` (attach to task, standalone note handling, timestamp) in `tests/FocusAssistant.Application.Tests/UseCases/AddNoteUseCaseTests.cs`
+- [X] T110 [US3] Write unit tests for `GetTaskNotesUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/GetTaskNotesUseCaseTests.cs`
 
 **Checkpoint**: Notes can be added, retrieved, and are automatically read back on task resumption. All US3 unit tests pass.
 
@@ -179,17 +179,17 @@
 
 ### Implementation for User Story 4
 
-- [ ] T056 [US4] Create `ReflectionService` that generates daily summary: completed tasks, open tasks, time per task in `src/FocusAssistant.Application/Services/ReflectionService.cs`
-- [ ] T057 [US4] Create `StartReflectionUseCase` that triggers reflection mode and returns the daily summary in `src/FocusAssistant.Application/UseCases/StartReflectionUseCase.cs`
-- [ ] T058 [US4] Create `SetPrioritiesUseCase` that saves user's priority ranking for next day as a `DailyPlan` entity in `src/FocusAssistant.Application/UseCases/SetPrioritiesUseCase.cs`
-- [ ] T059 [US4] Add scheduled reflection prompt: extend `ReminderBackgroundService` to check configured reflection time and send prompt in `src/FocusAssistant.Cli/HostedServices/ReminderBackgroundService.cs`
-- [ ] T060 [US4] Define Copilot tools `start_reflection`, `set_priorities`, `get_daily_summary` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T061 [US4] Update system prompt with reflection mode behavior: structured walkthrough, priority setting, confirmation in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T056 [US4] Create `ReflectionService` that generates daily summary: completed tasks, open tasks, time per task in `src/FocusAssistant.Application/Services/ReflectionService.cs`
+- [X] T057 [US4] Create `StartReflectionUseCase` that triggers reflection mode and returns the daily summary in `src/FocusAssistant.Application/UseCases/StartReflectionUseCase.cs`
+- [X] T058 [US4] Create `SetPrioritiesUseCase` that saves user's priority ranking for next day as a `DailyPlan` entity in `src/FocusAssistant.Application/UseCases/SetPrioritiesUseCase.cs`
+- [X] T059 [US4] Add scheduled reflection prompt: extend `ReminderBackgroundService` to check configured reflection time and send prompt in `src/FocusAssistant.Cli/HostedServices/ReminderBackgroundService.cs`
+- [X] T060 [US4] Define Copilot tools `start_reflection`, `set_priorities`, `get_daily_summary` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T061 [US4] Update system prompt with reflection mode behavior: structured walkthrough, priority setting, confirmation in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 
 **TDD**: Write failing tests before implementing use cases above.
 
-- [ ] T111 [US4] Write unit tests for `ReflectionService` (daily summary, task time aggregation) in `tests/FocusAssistant.Application.Tests/Services/ReflectionServiceTests.cs`
-- [ ] T112 [US4] Write unit tests for `StartReflectionUseCase` and `SetPrioritiesUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/`
+- [X] T111 [US4] Write unit tests for `ReflectionService` (daily summary, task time aggregation) in `tests/FocusAssistant.Application.Tests/Services/ReflectionServiceTests.cs`
+- [X] T112 [US4] Write unit tests for `StartReflectionUseCase` and `SetPrioritiesUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/`
 
 **Checkpoint**: End-of-day reflection works via both user trigger and scheduled prompt. Priorities are saved. All US4 unit tests pass.
 
@@ -203,16 +203,16 @@
 
 ### Implementation for User Story 5
 
-- [ ] T062 [US5] Create `GetMorningBriefingUseCase` that loads previous day's plan, open tasks, and task ages in `src/FocusAssistant.Application/UseCases/GetMorningBriefingUseCase.cs`
-- [ ] T063 [US5] Add session detection logic: on startup, detect if this is a new day or multi-day gap and trigger briefing in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
-- [ ] T064 [US5] Update `SwitchTaskUseCase` to read back notes from prior day when resuming a task from a previous session in `src/FocusAssistant.Application/UseCases/SwitchTaskUseCase.cs`
-- [ ] T065 [US5] Define Copilot tool `get_morning_briefing` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T066 [US5] Update system prompt with morning briefing rules: auto-trigger on session start, greet user, read priorities in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
-- [ ] T067 [US5] Wire session start detection in `VoiceListenerService` or `CopilotAgentSession` to automatically invoke morning briefing on first interaction of a new session in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
+- [X] T062 [US5] Create `GetMorningBriefingUseCase` that loads previous day's plan, open tasks, and task ages in `src/FocusAssistant.Application/UseCases/GetMorningBriefingUseCase.cs`
+- [X] T063 [US5] Add session detection logic: on startup, detect if this is a new day or multi-day gap and trigger briefing in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
+- [X] T064 [US5] Update `SwitchTaskUseCase` to read back notes from prior day when resuming a task from a previous session in `src/FocusAssistant.Application/UseCases/SwitchTaskUseCase.cs`
+- [X] T065 [US5] Define Copilot tool `get_morning_briefing` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T066 [US5] Update system prompt with morning briefing rules: auto-trigger on session start, greet user, read priorities in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T067 [US5] Wire session start detection in `VoiceListenerService` or `CopilotAgentSession` to automatically invoke morning briefing on first interaction of a new session in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
 
 **TDD**: Write failing tests before implementing use cases above.
 
-- [ ] T113 [US5] Write unit tests for `GetMorningBriefingUseCase` (single-day, multi-day gap, no prior session) in `tests/FocusAssistant.Application.Tests/UseCases/GetMorningBriefingUseCaseTests.cs`
+- [X] T113 [US5] Write unit tests for `GetMorningBriefingUseCase` (single-day, multi-day gap, no prior session) in `tests/FocusAssistant.Application.Tests/UseCases/GetMorningBriefingUseCaseTests.cs`
 
 **Checkpoint**: Morning briefing fires on new-day session start with complete carry-over data. All US5 unit tests pass.
 
@@ -226,16 +226,16 @@
 
 ### Implementation for User Story 6
 
-- [ ] T068 [US6] Implement `WakeWordDetector` with a real wake-word detection library (e.g., Porcupine or OpenWakeWord) that listens to microphone and emits detection events in `src/FocusAssistant.Infrastructure/Voice/WakeWordDetector.cs`
-- [ ] T069 [US6] Implement real `SpeechToTextService` using a speech recognition engine (e.g., Vosk for offline or Azure Speech SDK) replacing the stdin stub in `src/FocusAssistant.Infrastructure/Voice/SpeechToTextService.cs`
-- [ ] T070 [US6] Implement real `TextToSpeechService` using a TTS engine (e.g., `espeak` on Linux or Azure Speech SDK) replacing the stdout stub in `src/FocusAssistant.Infrastructure/Voice/TextToSpeechService.cs`
-- [ ] T071 [US6] Update `VoiceListenerService` to integrate wake-word detection → speech capture → Copilot → TTS pipeline with barge-in support (stop speaking when user starts) in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
-- [ ] T072 [US6] Add graceful shutdown and long-running stability handling: ensure `CopilotClient` auto-restarts on crash, voice services recover from audio device errors in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
-- [ ] T073 [US6] Update system prompt with voice-specific clarification rules: ask for clarification on low-confidence transcriptions in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T068 [US6] Implement `WakeWordDetector` with a real wake-word detection library (e.g., Porcupine or OpenWakeWord) that listens to microphone and emits detection events in `src/FocusAssistant.Infrastructure/Voice/WakeWordDetector.cs`
+- [X] T069 [US6] Implement real `SpeechToTextService` using a speech recognition engine (e.g., Vosk for offline or Azure Speech SDK) replacing the stdin stub in `src/FocusAssistant.Infrastructure/Voice/SpeechToTextService.cs`
+- [X] T070 [US6] Implement real `TextToSpeechService` using a TTS engine (e.g., `espeak` on Linux or Azure Speech SDK) replacing the stdout stub in `src/FocusAssistant.Infrastructure/Voice/TextToSpeechService.cs`
+- [X] T071 [US6] Update `VoiceListenerService` to integrate wake-word detection → speech capture → Copilot → TTS pipeline with barge-in support (stop speaking when user starts) in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
+- [X] T072 [US6] Add graceful shutdown and long-running stability handling: ensure `CopilotClient` auto-restarts on crash, voice services recover from audio device errors in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
+- [X] T073 [US6] Update system prompt with voice-specific clarification rules: ask for clarification on low-confidence transcriptions in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 
 **TDD**: Write failing tests for voice service contracts.
 
-- [ ] T114 [US6] Write integration tests for `WakeWordDetector`, `SpeechToTextService`, `TextToSpeechService` contracts in `tests/FocusAssistant.Infrastructure.Tests/Voice/`
+- [X] T114 [US6] Write integration tests for `WakeWordDetector`, `SpeechToTextService`, `TextToSpeechService` contracts in `tests/FocusAssistant.Infrastructure.Tests/Voice/`
 
 **Checkpoint**: Full voice pipeline operational: wake word → speech-to-text → Copilot → text-to-speech, running reliably for extended sessions. All voice integration tests pass.
 

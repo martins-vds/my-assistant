@@ -10,6 +10,7 @@ public sealed class RenameTaskUseCaseTests
 {
     private readonly ITaskRepository _taskRepo = Substitute.For<ITaskRepository>();
     private readonly ISessionRepository _sessionRepo = Substitute.For<ISessionRepository>();
+    private readonly IUserPreferencesRepository _prefsRepo = Substitute.For<IUserPreferencesRepository>();
 
     private async Task<(RenameTaskUseCase UseCase, TaskTrackingService Service)> CreateAsync()
     {
@@ -22,7 +23,7 @@ public sealed class RenameTaskUseCaseTests
         _taskRepo.SaveAllAsync(Arg.Any<IEnumerable<FocusTask>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var service = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var service = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await service.InitializeAsync();
         return (new RenameTaskUseCase(service), service);
     }
@@ -92,6 +93,7 @@ public sealed class DeleteTaskUseCaseTests
 {
     private readonly ITaskRepository _taskRepo = Substitute.For<ITaskRepository>();
     private readonly ISessionRepository _sessionRepo = Substitute.For<ISessionRepository>();
+    private readonly IUserPreferencesRepository _prefsRepo = Substitute.For<IUserPreferencesRepository>();
 
     private async Task<(DeleteTaskUseCase UseCase, TaskTrackingService Service)> CreateAsync()
     {
@@ -104,7 +106,7 @@ public sealed class DeleteTaskUseCaseTests
         _taskRepo.SaveAllAsync(Arg.Any<IEnumerable<FocusTask>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var service = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var service = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await service.InitializeAsync();
         return (new DeleteTaskUseCase(service), service);
     }
@@ -179,6 +181,7 @@ public sealed class MergeTasksUseCaseTests
 {
     private readonly ITaskRepository _taskRepo = Substitute.For<ITaskRepository>();
     private readonly ISessionRepository _sessionRepo = Substitute.For<ISessionRepository>();
+    private readonly IUserPreferencesRepository _prefsRepo = Substitute.For<IUserPreferencesRepository>();
 
     private async Task<(MergeTasksUseCase UseCase, TaskTrackingService Service)> CreateAsync()
     {
@@ -191,7 +194,7 @@ public sealed class MergeTasksUseCaseTests
         _taskRepo.SaveAllAsync(Arg.Any<IEnumerable<FocusTask>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var service = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var service = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await service.InitializeAsync();
         return (new MergeTasksUseCase(service), service);
     }

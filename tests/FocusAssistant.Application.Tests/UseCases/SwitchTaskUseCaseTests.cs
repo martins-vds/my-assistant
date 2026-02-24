@@ -10,6 +10,7 @@ public sealed class SwitchTaskUseCaseTests
 {
     private readonly ITaskRepository _taskRepo = Substitute.For<ITaskRepository>();
     private readonly ISessionRepository _sessionRepo = Substitute.For<ISessionRepository>();
+    private readonly IUserPreferencesRepository _prefsRepo = Substitute.For<IUserPreferencesRepository>();
     private readonly INoteRepository _noteRepo = Substitute.For<INoteRepository>();
 
     private async Task<(SwitchTaskUseCase UseCase, TaskTrackingService Service)> CreateAsync()
@@ -25,7 +26,7 @@ public sealed class SwitchTaskUseCaseTests
         _noteRepo.GetByTaskIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TaskNote>>(Array.Empty<TaskNote>()));
 
-        var service = new TaskTrackingService(_taskRepo, _sessionRepo);
+        var service = new TaskTrackingService(_taskRepo, _sessionRepo, _prefsRepo);
         await service.InitializeAsync();
         return (new SwitchTaskUseCase(service, _noteRepo), service);
     }

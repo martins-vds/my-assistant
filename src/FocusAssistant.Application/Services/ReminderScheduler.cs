@@ -119,7 +119,7 @@ public sealed class ReminderScheduler
         if (lastLog.IsActive)
             return TimeSpan.Zero;
 
-        var end = lastLog.End ?? DateTime.UtcNow;
+        var end = lastLog.EndTime ?? DateTime.UtcNow;
         return DateTime.UtcNow - end;
     }
 }

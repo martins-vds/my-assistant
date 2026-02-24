@@ -15,7 +15,8 @@ public class FocusTaskTests
         Assert.Equal("API refactor", task.Name);
         Assert.Equal(TaskStatus.InProgress, task.Status);
         Assert.NotEqual(Guid.Empty, task.Id);
-        Assert.Empty(task.TimeLogs);
+        Assert.Single(task.TimeLogs);
+        Assert.True(task.TimeLogs[0].IsActive);
         Assert.Empty(task.NoteIds);
     }
 
@@ -44,8 +45,11 @@ public class FocusTaskTests
         task.Start();
 
         Assert.Equal(TaskStatus.InProgress, task.Status);
-        Assert.Single(task.TimeLogs);
-        Assert.True(task.TimeLogs[0].IsActive);
+        Assert.Equal(2, task.TimeLogs.Count);
+        // First log (from constructor) was stopped by Pause
+        Assert.False(task.TimeLogs[0].IsActive);
+        // Second log (from Start) is active
+        Assert.True(task.TimeLogs[1].IsActive);
     }
 
     [Fact]
@@ -70,13 +74,13 @@ public class FocusTaskTests
     public void Pause_FromInProgress_SetsPaused()
     {
         var task = new FocusTask("test");
-        task.Start();
 
         task.Pause();
 
         Assert.Equal(TaskStatus.Paused, task.Status);
-        // Time log should be stopped
-        Assert.All(task.TimeLogs, t => Assert.False(t.IsActive));
+        // Constructor time log should be stopped
+        Assert.Single(task.TimeLogs);
+        Assert.False(task.TimeLogs[0].IsActive);
     }
 
     [Fact]
@@ -237,8 +241,7 @@ public class FocusTaskTests
     public void GetTotalTimeSpent_AggregatesAllTimeLogs()
     {
         var task = new FocusTask("test");
-        // First session
-        task.Start();
+        // First session (started by constructor)
         task.Pause();
         // Second session
         task.Start();
