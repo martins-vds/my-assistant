@@ -24,6 +24,10 @@ public sealed class AddNoteUseCase
         if (string.IsNullOrWhiteSpace(content))
             return AddNoteResult.Error("Note content cannot be empty.");
 
+        // Normalize whitespace-only taskName to null
+        if (string.IsNullOrWhiteSpace(taskName))
+            taskName = null;
+
         FocusTask? task = null;
 
         if (taskName is not null)

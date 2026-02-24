@@ -20,6 +20,10 @@ public sealed class GetTaskNotesUseCase
 
     public async Task<GetTaskNotesResult> ExecuteAsync(string? taskName = null, CancellationToken ct = default)
     {
+        // Normalize whitespace-only taskName to null
+        if (string.IsNullOrWhiteSpace(taskName))
+            taskName = null;
+
         if (taskName is not null)
         {
             var task = _tracking.FindTaskByName(taskName);

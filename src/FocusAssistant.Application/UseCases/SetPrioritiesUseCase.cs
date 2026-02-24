@@ -23,8 +23,17 @@ public sealed class SetPrioritiesUseCase
     /// </summary>
     public async Task<SetPrioritiesResult> ExecuteAsync(IReadOnlyList<string> orderedTaskNames, string? note = null, CancellationToken ct = default)
     {
-        if (orderedTaskNames.Count == 0)
+        if (orderedTaskNames is null || orderedTaskNames.Count == 0)
             return SetPrioritiesResult.Error("No tasks specified for prioritization.");
+
+        // Validate entries: no empty/whitespace names
+        if (orderedTaskNames.Any(string.IsNullOrWhiteSpace))
+            return SetPrioritiesResult.Error("Task names cannot be empty.");
+
+        // Check for duplicate names
+        var distinct = orderedTaskNames.Select(n => n.Trim().ToLowerInvariant()).ToHashSet();
+        if (distinct.Count != orderedTaskNames.Count)
+            return SetPrioritiesResult.Error("Duplicate task names are not allowed in priority list.");
 
         var taskIds = new List<Guid>();
         foreach (var name in orderedTaskNames)

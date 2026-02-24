@@ -18,6 +18,10 @@ public sealed class CompleteTaskUseCase
 
     public async Task<CompleteTaskResult> ExecuteAsync(string? name = null, CancellationToken ct = default)
     {
+        // Normalize whitespace-only name to null (complete current task)
+        if (string.IsNullOrWhiteSpace(name))
+            name = null;
+
         try
         {
             var task = _tracking.CompleteTask(name);

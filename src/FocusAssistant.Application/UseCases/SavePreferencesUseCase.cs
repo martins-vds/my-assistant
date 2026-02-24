@@ -29,6 +29,22 @@ public sealed class SavePreferencesUseCase
     {
         try
         {
+            // Bounds validation
+            if (reminderIntervalMinutes.HasValue && (reminderIntervalMinutes.Value <= 0 || reminderIntervalMinutes.Value > 1440))
+                return new SavePreferencesResult(false, "Reminder interval must be between 1 and 1440 minutes.");
+
+            if (idleThresholdMinutes.HasValue && (idleThresholdMinutes.Value <= 0 || idleThresholdMinutes.Value > 1440))
+                return new SavePreferencesResult(false, "Idle threshold must be between 1 and 1440 minutes.");
+
+            if (reflectionTime is not null && !string.IsNullOrWhiteSpace(reflectionTime)
+                && !string.Equals(reflectionTime, "none", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(reflectionTime, "off", StringComparison.OrdinalIgnoreCase)
+                && !TimeOnly.TryParse(reflectionTime, out _))
+                return new SavePreferencesResult(false, $"Invalid reflection time: '{reflectionTime}'. Use a time like '17:00' or 'none' to disable.");
+
+            if (wakeWord is not null && string.IsNullOrWhiteSpace(wakeWord))
+                return new SavePreferencesResult(false, "Wake word cannot be empty.");
+
             var existing = await _preferencesRepository.GetAsync(ct);
 
             if (existing is not null)
@@ -76,6 +92,12 @@ public sealed class SavePreferencesUseCase
         string value,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(settingName))
+            return new SavePreferencesResult(false, "Setting name is required.");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return new SavePreferencesResult(false, "Value is required.");
+
         try
         {
             var preferences = await _preferencesRepository.GetAsync(ct);
@@ -90,6 +112,8 @@ public sealed class SavePreferencesUseCase
                 case "defaultreminderinterval":
                     if (double.TryParse(value, out var minutes))
                     {
+                        if (minutes <= 0 || minutes > 1440)
+                            return new SavePreferencesResult(false, "Reminder interval must be between 1 and 1440 minutes.");
                         preferences.SetDefaultReminderInterval(new ReminderInterval(TimeSpan.FromMinutes(minutes)));
                     }
                     else
@@ -103,6 +127,8 @@ public sealed class SavePreferencesUseCase
                 case "idlecheckinthreshold":
                     if (double.TryParse(value, out var idleMinutes))
                     {
+                        if (idleMinutes <= 0 || idleMinutes > 1440)
+                            return new SavePreferencesResult(false, "Idle threshold must be between 1 and 1440 minutes.");
                         preferences.SetIdleCheckInThreshold(TimeSpan.FromMinutes(idleMinutes));
                     }
                     else
@@ -129,6 +155,8 @@ public sealed class SavePreferencesUseCase
                     break;
 
                 case "wakeword":
+                    if (string.IsNullOrWhiteSpace(value))
+                        return new SavePreferencesResult(false, "Wake word cannot be empty.");
                     preferences.SetWakeWord(value);
                     break;
 
@@ -175,10 +203,18 @@ public sealed class SavePreferencesUseCase
         CancellationToken ct)
     {
         if (reminderIntervalMinutes.HasValue)
+        {
+            if (reminderIntervalMinutes.Value <= 0 || reminderIntervalMinutes.Value > 1440)
+                return new SavePreferencesResult(false, "Reminder interval must be between 1 and 1440 minutes.");
             preferences.SetDefaultReminderInterval(new ReminderInterval(TimeSpan.FromMinutes(reminderIntervalMinutes.Value)));
+        }
 
         if (idleThresholdMinutes.HasValue)
+        {
+            if (idleThresholdMinutes.Value <= 0 || idleThresholdMinutes.Value > 1440)
+                return new SavePreferencesResult(false, "Idle threshold must be between 1 and 1440 minutes.");
             preferences.SetIdleCheckInThreshold(TimeSpan.FromMinutes(idleThresholdMinutes.Value));
+        }
 
         if (reflectionTime is not null)
         {
@@ -191,10 +227,18 @@ public sealed class SavePreferencesUseCase
             {
                 preferences.SetAutomaticReflectionTime(parsed);
             }
+            else
+            {
+                return new SavePreferencesResult(false, $"Invalid reflection time: '{reflectionTime}'. Use a time like '17:00' or 'none' to disable.");
+            }
         }
 
         if (wakeWord is not null)
+        {
+            if (string.IsNullOrWhiteSpace(wakeWord))
+                return new SavePreferencesResult(false, "Wake word cannot be empty.");
             preferences.SetWakeWord(wakeWord);
+        }
 
         await _preferencesRepository.SaveAsync(preferences, ct);
         return new SavePreferencesResult(true, "Preferences updated successfully.");

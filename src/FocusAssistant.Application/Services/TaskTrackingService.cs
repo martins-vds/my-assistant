@@ -1,6 +1,7 @@
 using FocusAssistant.Domain.Aggregates;
 using FocusAssistant.Domain.Entities;
 using FocusAssistant.Domain.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace FocusAssistant.Application.Services;
 
@@ -15,6 +16,7 @@ public sealed class TaskTrackingService
     private readonly ITaskRepository _taskRepository;
     private readonly ISessionRepository _sessionRepository;
     private readonly IUserPreferencesRepository _preferencesRepository;
+    private readonly ILogger<TaskTrackingService>? _logger;
     private readonly TaskAggregate _aggregate;
     private WorkSession? _currentSession;
 
@@ -33,11 +35,13 @@ public sealed class TaskTrackingService
     public TaskTrackingService(
         ITaskRepository taskRepository,
         ISessionRepository sessionRepository,
-        IUserPreferencesRepository preferencesRepository)
+        IUserPreferencesRepository preferencesRepository,
+        ILogger<TaskTrackingService>? logger = null)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _preferencesRepository = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
+        _logger = logger;
         _aggregate = new TaskAggregate();
     }
 
@@ -69,6 +73,7 @@ public sealed class TaskTrackingService
 
     public FocusTask CreateTask(string name)
     {
+        _logger?.LogInformation("Creating task: {TaskName}", name);
         var task = _aggregate.CreateTask(name);
         RecordCurrentTaskInSession(task);
         return task;
@@ -76,6 +81,7 @@ public sealed class TaskTrackingService
 
     public FocusTask SwitchTask(string name)
     {
+        _logger?.LogInformation("Switching to task: {TaskName}", name);
         var task = _aggregate.SwitchToTask(name);
         RecordCurrentTaskInSession(task);
         return task;
@@ -83,6 +89,7 @@ public sealed class TaskTrackingService
 
     public FocusTask CompleteTask(string? name = null)
     {
+        _logger?.LogInformation("Completing task: {TaskName}", name ?? "(current)");
         return name is not null
             ? _aggregate.CompleteTask(name)
             : _aggregate.CompleteCurrentTask();

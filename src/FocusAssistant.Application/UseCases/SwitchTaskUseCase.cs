@@ -24,23 +24,30 @@ public sealed class SwitchTaskUseCase
         if (string.IsNullOrWhiteSpace(name))
             return SwitchTaskResult.Error("Task name cannot be empty.");
 
-        var previousTask = _tracking.GetCurrentTask();
-        var task = _tracking.SwitchTask(name);
-        await _tracking.SaveAsync(ct);
-
-        // Check if the task has notes to read back
-        string? lastNote = null;
-        if (task.NoteIds.Count > 0)
+        try
         {
-            var notes = await _noteRepository.GetByTaskIdAsync(task.Id, ct);
-            lastNote = notes.LastOrDefault()?.Content;
-        }
+            var previousTask = _tracking.GetCurrentTask();
+            var task = _tracking.SwitchTask(name);
+            await _tracking.SaveAsync(ct);
 
-        return SwitchTaskResult.Success(
-            task.Name,
-            previousTask?.Name,
-            wasCreated: previousTask is not null && _tracking.FindTaskByName(name) is null || task.CreatedAt > DateTime.UtcNow.AddSeconds(-2),
-            lastNote);
+            // Check if the task has notes to read back
+            string? lastNote = null;
+            if (task.NoteIds.Count > 0)
+            {
+                var notes = await _noteRepository.GetByTaskIdAsync(task.Id, ct);
+                lastNote = notes.LastOrDefault()?.Content;
+            }
+
+            return SwitchTaskResult.Success(
+                task.Name,
+                previousTask?.Name,
+                wasCreated: previousTask is not null && _tracking.FindTaskByName(name) is null || task.CreatedAt > DateTime.UtcNow.AddSeconds(-2),
+                lastNote);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwitchTaskResult.Error(ex.Message);
+        }
     }
 }
 

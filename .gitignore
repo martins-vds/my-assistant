@@ -437,3 +437,6 @@ FodyWeavers.xsd
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Focus Assistant local data
+.focus-assistant/

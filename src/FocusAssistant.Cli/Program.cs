@@ -49,6 +49,7 @@ public class Program
                 services.AddSingleton<SetPrioritiesUseCase>();
                 services.AddSingleton<GetMorningBriefingUseCase>();
                 services.AddSingleton<SavePreferencesUseCase>();
+                services.AddSingleton<ArchiveTasksUseCase>();
 
                 // Agent session with tools
                 services.AddSingleton<CopilotAgentSession>(sp =>
@@ -86,7 +87,11 @@ public class Program
                         sp.GetRequiredService<SavePreferencesUseCase>()
                     );
 
-                    var allTools = tools.Concat(reminderTools).Concat(noteTools).Concat(reflectionTools).Concat(briefingTools).Concat(preferenceTools).ToList();
+                    var archiveTools = ToolDefinitions.CreateArchiveTools(
+                        sp.GetRequiredService<ArchiveTasksUseCase>()
+                    );
+
+                    var allTools = tools.Concat(reminderTools).Concat(noteTools).Concat(reflectionTools).Concat(briefingTools).Concat(preferenceTools).Concat(archiveTools).ToList();
 
                     return new CopilotAgentSession(
                         sp.GetRequiredService<ILogger<CopilotAgentSession>>(),

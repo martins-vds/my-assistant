@@ -279,6 +279,25 @@ public static class ToolDefinitions
     }
 
     /// <summary>
+    /// Creates AI function tools for archiving old completed tasks.
+    /// </summary>
+    public static IList<AIFunction> CreateArchiveTools(ArchiveTasksUseCase archiveTasks)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async ([Description("Only archive tasks completed more than this many days ago. If omitted, archives all completed tasks.")] int? olderThanDays = null) =>
+                {
+                    var result = await archiveTasks.ExecuteAsync(olderThanDays);
+                    if (!result.IsSuccess)
+                        return result.ErrorMessage ?? "Failed to archive tasks.";
+                    return $"Archived {result.ArchivedTaskNames!.Count} task(s): {string.Join(", ", result.ArchivedTaskNames)}";
+                },
+                new AIFunctionFactoryOptions { Name = "archive_tasks", Description = "Archive old completed tasks to keep the active task list clean. Optionally specify a minimum age in days." })
+        ];
+    }
+
+    /// <summary>
     /// Creates AI function tools for preference management (Onboarding).
     /// </summary>
     public static IList<AIFunction> CreatePreferenceTools(SavePreferencesUseCase savePreferences)

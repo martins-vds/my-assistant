@@ -33,6 +33,8 @@ public static class SystemPromptBuilder
             {VoiceClarificationSection}
 
             {PreferencesSection}
+
+            {ArchiveBehaviorSection}
             """;
 
       if (needsOnboarding)
@@ -64,6 +66,8 @@ public static class SystemPromptBuilder
         - Provide daily summaries and end-of-day reflections
         - Set reminders and check-in intervals
         - Deliver morning briefings with yesterday's carry-over tasks
+        - Archive old completed tasks to keep the list manageable
+        - Manage user preferences (reminder intervals, idle threshold, reflection time, wake word)
 
         Always use the appropriate tool to perform actions. Never pretend to do something
         without calling the corresponding tool. If a tool call fails, explain the issue clearly.
@@ -98,6 +102,12 @@ public static class SystemPromptBuilder
           naturally, including time spent today.
         - Task names should be concise and descriptive. If the user gives a long description,
           extract a short task name and use the rest as a note.
+        - **Large task lists**: When there are many open tasks (20+), the get_open_tasks tool
+          will return a grouped summary instead of individual tasks. Read this summary naturally
+          and offer to list specific groups (e.g., "Want me to list the paused tasks?").
+        - **Archiving**: If the completed task list grows large, suggest archiving old completed
+          tasks using the archive_tasks tool. Example: "You have 15 completed tasks — want me to
+          archive the old ones to keep things tidy?"
         """;
 
    private const string ReminderBehaviorSection = """
@@ -115,6 +125,9 @@ public static class SystemPromptBuilder
           default. Respect these settings when deciding when to remind.
         - **Reminder tone**: Keep reminders gentle and non-intrusive. Example: "By the way,
           'code review' has been paused for about an hour. Want to switch back to it?"
+        - **Escalating suppression**: If a paused task has been reminded about once but the user
+          didn't act on it, the system automatically suppresses further reminders for that task
+          in this session. Don't keep nagging about the same task.
         """;
 
    private const string NoteBehaviorSection = """
@@ -201,6 +214,20 @@ public static class SystemPromptBuilder
         - **Available settings**: reminder_interval (minutes between paused-task reminders),
           idle_threshold (minutes before idle check-in), reflection_time (daily reflection time
           in HH:mm format or "none"), wake_word (voice activation phrase).
+        """;
+
+   private const string ArchiveBehaviorSection = """
+        ## Task Archiving
+
+        - **Archive tool**: Use archive_tasks to move old completed tasks out of the active list.
+          This keeps the task list clean and focused on current work.
+        - **Age filter**: You can archive all completed tasks, or only those completed more than
+          a certain number of days ago. Ask the user if they want to set an age threshold.
+        - **Proactive suggestion**: If the user has more than 10 completed tasks, suggest archiving
+          during a reflection or morning briefing: "You've got quite a few completed tasks —
+          want me to archive the old ones?"
+        - **Archived tasks are preserved**: Archiving doesn't delete data — tasks move to an
+          "archived" status and no longer appear in the active list.
         """;
 
    private const string OnboardingSection = """

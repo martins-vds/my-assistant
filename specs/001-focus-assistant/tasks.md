@@ -246,14 +246,14 @@
 **Purpose**: Guide the user through initial preference setup on first launch
 **Depends on**: Phase 3 (US1) — T074 modifies `TaskTrackingService` created in T027
 
-- [ ] T074 Create first-use detection logic: check if preferences file exists; if not, flag onboarding needed in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
-- [ ] T075 Define Copilot tool `save_preferences` for persisting user preferences (default reminder interval, idle threshold, reflection time) in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T076 Update system prompt with onboarding instructions: on first use, walk user through preference setup before normal operation in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
-- [ ] T077 Define Copilot tool `update_preferences` for changing preferences at any time via voice in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T074 Create first-use detection logic: check if preferences file exists; if not, flag onboarding needed in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
+- [X] T075 Define Copilot tool `save_preferences` for persisting user preferences (default reminder interval, idle threshold, reflection time) in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T076 Update system prompt with onboarding instructions: on first use, walk user through preference setup before normal operation in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T077 Define Copilot tool `update_preferences` for changing preferences at any time via voice in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
 
 **TDD**: Write failing tests for onboarding flow.
 
-- [ ] T115 Write unit tests for first-use detection and preference persistence in `tests/FocusAssistant.Application.Tests/Services/OnboardingTests.cs`
+- [X] T115 Write unit tests for first-use detection and preference persistence in `tests/FocusAssistant.Application.Tests/Services/OnboardingTests.cs`
 
 **Checkpoint**: First launch triggers guided preference setup; preferences persist and are changeable at any time. All onboarding tests pass.
 
@@ -263,16 +263,16 @@
 
 **Purpose**: Error handling, edge cases, robustness improvements
 
-- [ ] T078 [P] Add error handling and logging throughout all use cases and services using `ILogger<T>` in `src/FocusAssistant.Application/`
-- [ ] T079 [P] Add crash recovery: ensure `JsonFileStore` uses atomic writes (write-to-temp then rename) to prevent data corruption in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
-- [ ] T080 Handle large task list edge case: when >20 tasks, `GetOpenTasksUseCase` groups by status and summarizes rather than listing all in `src/FocusAssistant.Application/UseCases/GetOpenTasksUseCase.cs`
-- [ ] T081 [P] Handle escalating reminder suppression: limit reminders for tasks the user has been reminded about but not acted on (check-in once then wait for session end) in `src/FocusAssistant.Application/Services/ReminderScheduler.cs`
-- [ ] T082 [P] Add archive/bulk-delete support: create `ArchiveTasksUseCase` for cleaning up old completed tasks in `src/FocusAssistant.Application/UseCases/ArchiveTasksUseCase.cs`
-- [ ] T083 Define Copilot tool `archive_tasks` for bulk archival in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T084 Final review of system prompt for completeness: ensure all edge cases, conversation rules, and tool descriptions are documented in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
-- [ ] T116 [P] Add input validation and sanitization for all external input (voice-transcribed text, CLI input) at the application service boundary in `src/FocusAssistant.Application/Services/`
-- [ ] T117 [P] Document public APIs, domain models, and key architectural decisions in `docs/` (domain model reference, tool API catalog, system prompt design notes)
-- [ ] T118 [P] Configure default data directory `~/.focus-assistant/data/` with environment variable override `FOCUS_ASSISTANT_DATA_DIR` in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
+- [X] T078 [P] Add error handling and logging throughout all use cases and services using `ILogger<T>` in `src/FocusAssistant.Application/`
+- [X] T079 [P] Add crash recovery: ensure `JsonFileStore` uses atomic writes (write-to-temp then rename) to prevent data corruption in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
+- [X] T080 Handle large task list edge case: when >20 tasks, `GetOpenTasksUseCase` groups by status and summarizes rather than listing all in `src/FocusAssistant.Application/UseCases/GetOpenTasksUseCase.cs`
+- [X] T081 [P] Handle escalating reminder suppression: limit reminders for tasks the user has been reminded about but not acted on (check-in once then wait for session end) in `src/FocusAssistant.Application/Services/ReminderScheduler.cs`
+- [X] T082 [P] Add archive/bulk-delete support: create `ArchiveTasksUseCase` for cleaning up old completed tasks in `src/FocusAssistant.Application/UseCases/ArchiveTasksUseCase.cs`
+- [X] T083 Define Copilot tool `archive_tasks` for bulk archival in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T084 Final review of system prompt for completeness: ensure all edge cases, conversation rules, and tool descriptions are documented in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T116 [P] Add input validation and sanitization for all external input (voice-transcribed text, CLI input) at the application service boundary in `src/FocusAssistant.Application/Services/`
+- [X] T117 [P] Document public APIs, domain models, and key architectural decisions in `docs/` (domain model reference, tool API catalog, system prompt design notes)
+- [X] T118 [P] Configure default data directory `~/.focus-assistant/data/` with environment variable override `FOCUS_ASSISTANT_DATA_DIR` in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
 
 **Checkpoint**: All edge cases handled, data is crash-safe, logging is comprehensive, archive support is available. Input validation in place. Documentation complete.
 

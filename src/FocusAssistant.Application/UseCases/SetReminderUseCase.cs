@@ -23,8 +23,18 @@ public sealed class SetReminderUseCase
     /// </summary>
     public async Task<SetReminderResult> ExecuteAsync(double minutes, string? taskName = null, CancellationToken ct = default)
     {
+        if (double.IsNaN(minutes) || double.IsInfinity(minutes))
+            return SetReminderResult.Error("Reminder interval must be a valid number.");
+
         if (minutes <= 0)
             return SetReminderResult.Error("Reminder interval must be a positive number of minutes.");
+
+        if (minutes > 1440) // 24 hours max
+            return SetReminderResult.Error("Reminder interval cannot exceed 24 hours (1440 minutes).");
+
+        // Normalize whitespace-only taskName to null
+        if (string.IsNullOrWhiteSpace(taskName))
+            taskName = null;
 
         var interval = ReminderInterval.FromMinutes(minutes, isPerTaskOverride: taskName is not null);
 

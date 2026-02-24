@@ -9,6 +9,8 @@ using TaskStatus = FocusAssistant.Domain.ValueObjects.TaskStatus;
 /// <summary>
 /// Tracks idle time and paused-task durations.
 /// Determines when reminders should fire.
+/// Supports escalating suppression: tasks that have been reminded about
+/// but not acted on are suppressed until the next session.
 /// </summary>
 public sealed class ReminderScheduler
 {
@@ -16,6 +18,18 @@ public sealed class ReminderScheduler
     private readonly IUserPreferencesRepository _preferencesRepository;
     private DateTime _lastInteractionTime;
     private bool _isFocusSuppressed;
+
+    /// <summary>
+    /// Tracks task IDs that have been reminded once but not acted on.
+    /// After one reminder, the task is suppressed for the rest of the session.
+    /// </summary>
+    private readonly HashSet<Guid> _suppressedTaskIds = new();
+
+    /// <summary>
+    /// Tracks task IDs that have been reminded at least once in this session.
+    /// Used to implement escalating suppression.
+    /// </summary>
+    private readonly HashSet<Guid> _remindedTaskIds = new();
 
     public ReminderScheduler(TaskTrackingService tracking, IUserPreferencesRepository preferencesRepository)
     {
@@ -26,11 +40,47 @@ public sealed class ReminderScheduler
 
     /// <summary>
     /// Records a user interaction, resetting the idle timer.
+    /// If the user switched to a task that was previously reminded, clear its suppression.
     /// </summary>
     public void RecordInteraction()
     {
         _lastInteractionTime = DateTime.UtcNow;
         _isFocusSuppressed = false;
+
+        // If the user acted on a task (e.g., switched to it), clear suppression for current task
+        var currentTask = _tracking.GetCurrentTask();
+        if (currentTask is not null)
+        {
+            _suppressedTaskIds.Remove(currentTask.Id);
+            _remindedTaskIds.Remove(currentTask.Id);
+        }
+    }
+
+    /// <summary>
+    /// Mark a task reminder as acknowledged. After one reminder without action,
+    /// the task is suppressed for the rest of this session.
+    /// </summary>
+    public void AcknowledgeReminder(Guid taskId)
+    {
+        if (_remindedTaskIds.Contains(taskId))
+        {
+            // Second reminder — suppress for the rest of the session
+            _suppressedTaskIds.Add(taskId);
+        }
+        else
+        {
+            // First reminder — track it
+            _remindedTaskIds.Add(taskId);
+        }
+    }
+
+    /// <summary>
+    /// Reset all suppression state (e.g., on new session start).
+    /// </summary>
+    public void ResetSuppression()
+    {
+        _suppressedTaskIds.Clear();
+        _remindedTaskIds.Clear();
     }
 
     /// <summary>
@@ -90,6 +140,10 @@ public sealed class ReminderScheduler
 
         foreach (var task in pausedTasks)
         {
+            // Skip tasks that have been escalation-suppressed
+            if (_suppressedTaskIds.Contains(task.Id))
+                continue;
+
             var interval = task.ReminderInterval ?? defaultInterval;
             var pausedDuration = GetPausedDuration(task);
 

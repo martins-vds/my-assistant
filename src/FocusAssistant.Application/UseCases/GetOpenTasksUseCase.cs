@@ -4,10 +4,13 @@ namespace FocusAssistant.Application.UseCases;
 
 /// <summary>
 /// Returns all non-completed tasks with status, time spent today, and priority.
+/// When there are more than 20 tasks, groups by status and provides a summary.
 /// </summary>
 public sealed class GetOpenTasksUseCase
 {
     private readonly TaskTrackingService _tracking;
+
+    private const int LargeTaskListThreshold = 20;
 
     public GetOpenTasksUseCase(TaskTrackingService tracking)
     {
@@ -29,11 +32,31 @@ public sealed class GetOpenTasksUseCase
             IsCurrent = currentTask is not null && t.Id == currentTask.Id
         }).ToList();
 
+        // For large task lists, provide a grouped summary
+        string? groupedSummary = null;
+        if (taskSummaries.Count > LargeTaskListThreshold)
+        {
+            var inProgressCount = taskSummaries.Count(t => t.IsCurrent);
+            var pausedCount = taskSummaries.Count - inProgressCount;
+            var withPriority = taskSummaries.Where(t => t.PriorityRanking.HasValue).OrderBy(t => t.PriorityRanking).ToList();
+            var totalTimeToday = TimeSpan.FromTicks(taskSummaries.Sum(t => t.TimeSpentToday.Ticks));
+
+            groupedSummary = $"You have {taskSummaries.Count} open tasks ({inProgressCount} in progress, {pausedCount} paused). " +
+                            $"Total time today: {totalTimeToday:h\\:mm}.";
+
+            if (withPriority.Count > 0)
+            {
+                var topPriorities = string.Join(", ", withPriority.Take(5).Select(t => $"{t.Name} [P{t.PriorityRanking}]"));
+                groupedSummary += $" Top priorities: {topPriorities}.";
+            }
+        }
+
         return Task.FromResult(new GetOpenTasksResult
         {
             IsSuccess = true,
             Tasks = taskSummaries,
-            CurrentTaskName = currentTask?.Name
+            CurrentTaskName = currentTask?.Name,
+            GroupedSummary = groupedSummary
         });
     }
 }
@@ -43,6 +66,10 @@ public sealed record GetOpenTasksResult
     public bool IsSuccess { get; init; }
     public IReadOnlyList<TaskSummary> Tasks { get; init; } = Array.Empty<TaskSummary>();
     public string? CurrentTaskName { get; init; }
+    /// <summary>
+    /// Non-null when there are more than 20 tasks, providing a concise grouped summary.
+    /// </summary>
+    public string? GroupedSummary { get; init; }
 }
 
 public sealed record TaskSummary

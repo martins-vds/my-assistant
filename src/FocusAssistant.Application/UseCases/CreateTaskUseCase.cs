@@ -20,26 +20,33 @@ public sealed class CreateTaskUseCase
         if (string.IsNullOrWhiteSpace(name))
             return CreateTaskResult.Error("Task name cannot be empty.");
 
-        // Check for duplicate names
-        if (!force && _tracking.HasTaskWithName(name))
+        try
         {
-            var existing = _tracking.FindTaskByName(name)!;
-            return CreateTaskResult.Duplicate(existing.Name, existing.Status.ToString());
+            // Check for duplicate names
+            if (!force && _tracking.HasTaskWithName(name))
+            {
+                var existing = _tracking.FindTaskByName(name)!;
+                return CreateTaskResult.Duplicate(existing.Name, existing.Status.ToString());
+            }
+
+            var task = _tracking.CreateTask(name);
+            await _tracking.SaveAsync(ct);
+
+            var currentBefore = _tracking.GetPausedTasks();
+            string? pausedTaskName = null;
+            if (currentBefore.Count > 0)
+            {
+                // The most recently paused task (which was just auto-paused)
+                var justPaused = currentBefore.FirstOrDefault(t => t.Id != task.Id);
+                pausedTaskName = justPaused?.Name;
+            }
+
+            return CreateTaskResult.Success(task.Name, pausedTaskName);
         }
-
-        var task = _tracking.CreateTask(name);
-        await _tracking.SaveAsync(ct);
-
-        var currentBefore = _tracking.GetPausedTasks();
-        string? pausedTaskName = null;
-        if (currentBefore.Count > 0)
+        catch (InvalidOperationException ex)
         {
-            // The most recently paused task (which was just auto-paused)
-            var justPaused = currentBefore.FirstOrDefault(t => t.Id != task.Id);
-            pausedTaskName = justPaused?.Name;
+            return CreateTaskResult.Error(ex.Message);
         }
-
-        return CreateTaskResult.Success(task.Name, pausedTaskName);
     }
 }
 
