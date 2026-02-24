@@ -7,10 +7,10 @@ using Vosk;
 namespace FocusAssistant.Infrastructure.Voice;
 
 /// <summary>
-/// Detects a configurable wake word using continuous audio capture (ALSA arecord)
-/// and Vosk speech recognition in keyword-spotting mode.
-/// Listens to the microphone, runs audio through a small Vosk model, and matches
-/// partial/final results against the configured wake word.
+/// Detects a configurable wake word using continuous audio capture and Vosk speech
+/// recognition in keyword-spotting mode. Audio capture is platform-aware: arecord on
+/// Linux, ffmpeg on Windows/macOS. Listens to the microphone, runs audio through a
+/// small Vosk model, and matches partial/final results against the configured wake word.
 /// </summary>
 public sealed class WakeWordDetector : IWakeWordDetector
 {
@@ -60,11 +60,11 @@ public sealed class WakeWordDetector : IWakeWordDetector
                 if (ct.IsCancellationRequested)
                     return false;
 
-                Process? arecord = null;
+                Process? captureProcess = null;
                 try
                 {
-                    arecord = StartAudioCapture();
-                    if (arecord?.StandardOutput.BaseStream is null)
+                    captureProcess = AudioCaptureHelper.StartCapture();
+                    if (captureProcess?.StandardOutput.BaseStream is null)
                     {
                         _logger.LogError("Failed to start audio capture process (attempt {Attempt}/{Max})",
                             attempt + 1, MaxAudioCaptureRetries);
@@ -77,7 +77,7 @@ public sealed class WakeWordDetector : IWakeWordDetector
                     recognizer.SetWords(true);
 
                     var buffer = new byte[BufferSize];
-                    var stream = arecord.StandardOutput.BaseStream;
+                    var stream = captureProcess.StandardOutput.BaseStream;
 
                     _logger.LogDebug("Wake word detector listening for '{WakeWord}'...", WakeWord);
 
@@ -95,12 +95,12 @@ public sealed class WakeWordDetector : IWakeWordDetector
 
                         if (bytesRead == 0)
                         {
-                            // Stream ended — arecord process died. Capture stderr for diagnostics.
-                            var stderr = await ReadProcessStderrAsync(arecord);
+                            // Stream ended — capture process died. Capture stderr for diagnostics.
+                            var stderr = await ReadProcessStderrAsync(captureProcess);
                             _logger.LogWarning(
                                 "Audio capture stream ended unexpectedly (attempt {Attempt}/{Max}).{StdErr}",
                                 attempt + 1, MaxAudioCaptureRetries,
-                                string.IsNullOrWhiteSpace(stderr) ? "" : $" arecord stderr: {stderr}");
+                                string.IsNullOrWhiteSpace(stderr) ? "" : $" {AudioCaptureHelper.ToolName} stderr: {stderr}");
                             break; // Break inner loop to retry
                         }
 
@@ -134,13 +134,13 @@ public sealed class WakeWordDetector : IWakeWordDetector
                 }
                 finally
                 {
-                    StopProcess(arecord);
+                    StopProcess(captureProcess);
                 }
             }
 
             _logger.LogError(
-                "Audio capture failed after {Max} attempts. Check that a microphone is available and arecord works.",
-                MaxAudioCaptureRetries);
+                "Audio capture failed after {Max} attempts. Check that a microphone is available and {Tool} works. {InstallHint}",
+                MaxAudioCaptureRetries, AudioCaptureHelper.ToolName, AudioCaptureHelper.InstallInstructions);
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -211,35 +211,7 @@ public sealed class WakeWordDetector : IWakeWordDetector
         _logger.LogInformation("Vosk model loaded from '{ModelPath}'", _modelPath);
     }
 
-    /// <summary>
-    /// Starts arecord (ALSA) process to capture 16kHz mono 16-bit PCM audio from the default mic.
-    /// </summary>
-    private Process? StartAudioCapture()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "arecord",
-                Arguments = "-q -r 16000 -c 1 -f S16_LE -t raw",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
 
-            var process = Process.Start(psi);
-            if (process is null)
-                _logger.LogError("Failed to start arecord process");
-
-            return process;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to start audio capture. Ensure 'arecord' (alsa-utils) is installed");
-            return null;
-        }
-    }
 
     /// <summary>
     /// Checks if Vosk result JSON contains the wake word.

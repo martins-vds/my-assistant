@@ -1,14 +1,17 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using FocusAssistant.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace FocusAssistant.Infrastructure.Voice;
 
 /// <summary>
-/// Text-to-speech service using espeak-ng on Linux.
-/// Spawns espeak-ng as a child process. Supports barge-in via StopAsync
-/// (kills the running espeak-ng process to immediately stop speaking).
-/// Falls back to stdout text output if espeak-ng is not available.
+/// Cross-platform text-to-speech service.
+/// Linux: spawns espeak-ng as a child process.
+/// Windows: uses PowerShell with System.Speech.Synthesis (SAPI).
+/// macOS: uses the built-in 'say' command.
+/// Supports barge-in via StopAsync (kills the running process to immediately stop speaking).
+/// Falls back to stdout text output if TTS is not available.
 /// </summary>
 public sealed class TextToSpeechService : IVoiceOutputService
 {
@@ -24,6 +27,7 @@ public sealed class TextToSpeechService : IVoiceOutputService
 
     /// <summary>
     /// Voice variant for espeak-ng (e.g., "en", "en-us", "en+f3").
+    /// On Windows/macOS this is ignored (system default voice is used).
     /// </summary>
     public string Voice { get; set; } = "en";
 
@@ -50,11 +54,11 @@ public sealed class TextToSpeechService : IVoiceOutputService
             // Stop any currently playing speech (barge-in)
             await StopInternalAsync();
 
-            _currentProcess = StartEspeakProcess(text);
+            _currentProcess = StartTtsProcess(text);
             if (_currentProcess is null)
             {
-                // Fallback: print to stdout if espeak-ng is not available
-                _logger.LogWarning("espeak-ng not available — falling back to text output");
+                // Fallback: print to stdout if TTS is not available
+                _logger.LogWarning("TTS engine not available — falling back to text output");
                 Console.WriteLine(text);
                 return;
             }
@@ -102,7 +106,7 @@ public sealed class TextToSpeechService : IVoiceOutputService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error stopping espeak-ng process");
+            _logger.LogWarning(ex, "Error stopping TTS process");
         }
         finally
         {
@@ -113,38 +117,96 @@ public sealed class TextToSpeechService : IVoiceOutputService
         return Task.CompletedTask;
     }
 
-    private Process? StartEspeakProcess(string text)
+    /// <summary>
+    /// Starts the platform-appropriate TTS process.
+    /// </summary>
+    private Process? StartTtsProcess(string text)
     {
         try
         {
-            var psi = new ProcessStartInfo
+            ProcessStartInfo psi;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                FileName = "espeak-ng",
-                Arguments = $"-v {Voice} -s {SpeechRate} -- \"{EscapeText(text)}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                // Use PowerShell with .NET System.Speech (built into Windows)
+                var escaped = EscapeForPowerShell(text);
+                psi = new ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = $"-NoProfile -Command \"Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Rate = {PwshRate()}; $s.Speak('{escaped}')\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                psi = new ProcessStartInfo
+                {
+                    FileName = "say",
+                    Arguments = $"-r {SpeechRate} -- \"{EscapeText(text)}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
+            else
+            {
+                // Linux: espeak-ng
+                psi = new ProcessStartInfo
+                {
+                    FileName = "espeak-ng",
+                    Arguments = $"-v {Voice} -s {SpeechRate} -- \"{EscapeText(text)}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
 
             return Process.Start(psi);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start espeak-ng. Ensure 'espeak-ng' is installed");
+            var tool = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "PowerShell/SAPI"
+                     : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "say"
+                     : "espeak-ng";
+            _logger.LogError(ex, "Failed to start {Tool}. Ensure TTS is available on your system", tool);
             return null;
         }
     }
 
     /// <summary>
-    /// Escapes text for safe shell argument passing to espeak-ng.
+    /// Converts words-per-minute rate to PowerShell SpeechSynthesizer.Rate (-10 to 10 scale).
+    /// 160 wpm ≈ 0 (default), 200 wpm ≈ 2, 120 wpm ≈ -2, etc.
+    /// </summary>
+    private int PwshRate()
+    {
+        var rate = (SpeechRate - 160) / 20;
+        return Math.Clamp(rate, -10, 10);
+    }
+
+    /// <summary>
+    /// Escapes text for safe shell argument passing (Linux/macOS).
     /// </summary>
     private static string EscapeText(string text)
     {
-        // Remove characters that could break the shell command
         return text
             .Replace("\"", "'")
             .Replace("\\", "")
+            .Replace("\n", " ")
+            .Replace("\r", "");
+    }
+
+    /// <summary>
+    /// Escapes text for safe embedding in a PowerShell single-quoted string.
+    /// </summary>
+    private static string EscapeForPowerShell(string text)
+    {
+        return text
+            .Replace("'", "''")
             .Replace("\n", " ")
             .Replace("\r", "");
     }

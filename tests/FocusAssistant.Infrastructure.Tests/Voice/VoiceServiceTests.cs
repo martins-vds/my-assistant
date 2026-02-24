@@ -86,9 +86,9 @@ public class WakeWordDetectorTests
     }
 
     [Fact]
-    public async Task WaitForWakeWordAsync_ReturnsFalse_WhenArecordNotAvailable()
+    public async Task WaitForWakeWordAsync_ReturnsFalse_WhenAudioCaptureNotAvailable()
     {
-        // When running in CI or environments without a sound card, arecord fails.
+        // When running in CI or environments without audio hardware, capture fails.
         // The detector should retry with backoff instead of immediately returning false
         // in a tight loop. After exhausting retries, it should return false gracefully.
         //
@@ -261,9 +261,9 @@ public class TextToSpeechServiceTests
     }
 
     [Fact]
-    public async Task SpeakAsync_VoiceMode_FallsBackWhenEspeakMissing()
+    public async Task SpeakAsync_VoiceMode_FallsBackWhenTtsMissing()
     {
-        // When espeak-ng is not installed, should fall back to text output
+        // When TTS engine is not installed, should fall back to text output
         var service = new TextToSpeechService(_logger, useTextMode: false);
 
         using var sw = new StringWriter();
@@ -311,5 +311,37 @@ public class WakeWordDetectorContractTests
         var service = new TextToSpeechService(logger);
 
         Assert.IsAssignableFrom<IVoiceOutputService>(service);
+    }
+}
+
+/// <summary>
+/// Tests for the cross-platform AudioCaptureHelper.
+/// </summary>
+public class AudioCaptureHelperTests
+{
+    [Fact]
+    public void ToolName_ReturnsNonEmptyString()
+    {
+        var name = AudioCaptureHelper.ToolName;
+
+        Assert.False(string.IsNullOrWhiteSpace(name));
+    }
+
+    [Fact]
+    public void InstallInstructions_ReturnsNonEmptyString()
+    {
+        var instructions = AudioCaptureHelper.InstallInstructions;
+
+        Assert.False(string.IsNullOrWhiteSpace(instructions));
+    }
+
+    [Fact]
+    public void ToolName_IsPlatformAppropriate()
+    {
+        var name = AudioCaptureHelper.ToolName;
+
+        // Should be either "arecord" (Linux) or "ffmpeg" (Windows/macOS/other)
+        Assert.True(name == "arecord" || name == "ffmpeg",
+            $"Unexpected tool name: {name}");
     }
 }

@@ -1,0 +1,133 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+
+namespace FocusAssistant.Infrastructure.Voice;
+
+/// <summary>
+/// Platform-aware helper that starts an external audio capture process.
+/// Linux: uses arecord (ALSA).
+/// Windows: uses ffmpeg with DirectShow audio capture.
+/// macOS: uses ffmpeg with AVFoundation audio capture.
+/// All produce raw 16-bit LE PCM at 16kHz mono on stdout.
+/// </summary>
+public static class AudioCaptureHelper
+{
+    /// <summary>
+    /// Returns the human-readable name of the audio capture tool for the current platform.
+    /// </summary>
+    public static string ToolName =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "arecord" : "ffmpeg";
+
+    /// <summary>
+    /// Returns install instructions for the current platform.
+    /// </summary>
+    public static string InstallInstructions
+    {
+        get
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return "Install ffmpeg: winget install ffmpeg  (or download from https://ffmpeg.org)";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return "Install ffmpeg: brew install ffmpeg";
+            return "Install arecord: sudo apt-get install alsa-utils  (or your distro's equivalent)";
+        }
+    }
+
+    /// <summary>
+    /// Starts a platform-appropriate audio capture process producing raw 16kHz mono 16-bit LE PCM on stdout.
+    /// Returns null if the process cannot be started.
+    /// </summary>
+    /// <param name="deviceName">
+    /// Optional device name override. On Windows this is a DirectShow audio device name.
+    /// On Linux/macOS null uses the system default.
+    /// </param>
+    public static Process? StartCapture(string? deviceName = null)
+    {
+        ProcessStartInfo psi;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            psi = new ProcessStartInfo
+            {
+                FileName = "arecord",
+                Arguments = "-q -r 16000 -c 1 -f S16_LE -t raw",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // ffmpeg DirectShow capture → raw PCM on stdout
+            // Use "default" or a named audio device
+            var device = deviceName ?? "default";
+            psi = new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-f dshow -i audio=\"{device}\" -ar 16000 -ac 1 -f s16le -acodec pcm_s16le -loglevel quiet pipe:1",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            // ffmpeg AVFoundation capture → raw PCM on stdout
+            var device = deviceName ?? ":0";
+            psi = new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-f avfoundation -i \"{device}\" -ar 16000 -ac 1 -f s16le -acodec pcm_s16le -loglevel quiet pipe:1",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+        else
+        {
+            // Unknown platform — fall back to ffmpeg
+            psi = new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = "-f s16le -ar 16000 -ac 1 -loglevel quiet pipe:1",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+
+        return Process.Start(psi);
+    }
+
+    /// <summary>
+    /// Tests whether audio capture is available by attempting to start and immediately stop the capture process.
+    /// Returns true if the capture tool exists and can be invoked.
+    /// </summary>
+    public static bool IsAvailable()
+    {
+        try
+        {
+            var process = StartCapture();
+            if (process is null) return false;
+
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch { }
+            finally
+            {
+                process.Dispose();
+            }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}

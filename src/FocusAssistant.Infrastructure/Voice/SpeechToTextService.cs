@@ -8,9 +8,9 @@ namespace FocusAssistant.Infrastructure.Voice;
 
 /// <summary>
 /// Speech-to-text service using Vosk for offline speech recognition.
-/// Captures audio from the system microphone via ALSA (arecord) and
-/// transcribes it using Vosk's recognizer. Detects end-of-speech via
-/// silence timeout.
+/// Captures audio from the system microphone via platform-appropriate tools
+/// (arecord on Linux, ffmpeg on Windows/macOS) and transcribes it using Vosk's
+/// recognizer. Detects end-of-speech via silence timeout.
 /// Falls back to stdin text input if audio capture is unavailable.
 /// </summary>
 public sealed class SpeechToTextService : IVoiceInputService, IDisposable
@@ -74,11 +74,11 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
     {
         EnsureModel();
 
-        Process? arecord = null;
+        Process? captureProcess = null;
         try
         {
-            arecord = StartAudioCapture();
-            if (arecord?.StandardOutput.BaseStream is null)
+            captureProcess = AudioCaptureHelper.StartCapture();
+            if (captureProcess?.StandardOutput.BaseStream is null)
             {
                 _logger.LogError("Failed to start audio capture for STT");
                 return null;
@@ -89,7 +89,7 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
             recognizer.SetWords(true);
 
             var buffer = new byte[BufferSize];
-            var stream = arecord.StandardOutput.BaseStream;
+            var stream = captureProcess.StandardOutput.BaseStream;
             var lastSpeechTime = DateTime.UtcNow;
             var startTime = DateTime.UtcNow;
             var hasSpeech = false;
@@ -163,7 +163,7 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
         }
         finally
         {
-            StopProcess(arecord);
+            StopProcess(captureProcess);
         }
     }
 
@@ -202,28 +202,6 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
         _logger.LogInformation("Vosk STT model loaded from '{ModelPath}'", _modelPath);
     }
 
-    private Process? StartAudioCapture()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "arecord",
-                Arguments = "-q -r 16000 -c 1 -f S16_LE -t raw",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            return Process.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to start arecord. Ensure 'arecord' (alsa-utils) is installed");
-            return null;
-        }
-    }
 
     private static string? ExtractText(string voskJson)
     {

@@ -6,7 +6,9 @@ VOSK_MODEL_URL="https://alphacephei.com/vosk/models/${VOSK_MODEL_NAME}.zip"
 MODEL_DIR="$HOME/.focus-assistant/models"
 MODEL_PATH="${MODEL_DIR}/${VOSK_MODEL_NAME}"
 
-echo "=== Focus Assistant Setup ==="
+echo "=== Focus Assistant Setup (Linux) ==="
+echo ""
+echo "  Windows users: run setup.ps1 instead"
 echo ""
 
 # --- 1. espeak-ng ---
