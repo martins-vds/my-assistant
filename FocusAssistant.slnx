@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FocusAssistant.Application/FocusAssistant.Application.csproj" />
+    <Project Path="src/FocusAssistant.Cli/FocusAssistant.Cli.csproj" />
+    <Project Path="src/FocusAssistant.Domain/FocusAssistant.Domain.csproj" />
+    <Project Path="src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FocusAssistant.Application.Tests/FocusAssistant.Application.Tests.csproj" />
+    <Project Path="tests/FocusAssistant.Domain.Tests/FocusAssistant.Domain.Tests.csproj" />
+    <Project Path="tests/FocusAssistant.Infrastructure.Tests/FocusAssistant.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

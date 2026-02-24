@@ -23,14 +23,14 @@
 
 **Purpose**: Project initialization, solution structure, and dependency configuration
 
-- [ ] T001 Create .NET solution file at `FocusAssistant.sln` and project scaffolding for `src/FocusAssistant.Domain/FocusAssistant.Domain.csproj`, `src/FocusAssistant.Application/FocusAssistant.Application.csproj`, `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`, `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`
-- [ ] T002 Configure project references in `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `src/FocusAssistant.Application/FocusAssistant.Application.csproj`, `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`: Cli → Application, Infrastructure, Domain; Application → Domain; Infrastructure → Domain
-- [ ] T003 [P] Add NuGet dependencies: `GitHub.Copilot.SDK` and `Microsoft.Extensions.AI` to `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `Microsoft.Extensions.Hosting` to `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `System.Text.Json` to `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`
-- [ ] T004 [P] Create `.editorconfig` and `Directory.Build.props` at repo root for consistent code style and shared build properties
-- [ ] T005 [P] Create `src/FocusAssistant.Cli/Program.cs` with minimal `Host.CreateDefaultBuilder` setup, DI container, and hosted service registration (placeholder services)
-- [ ] T085 [P] Create test project scaffolding: `tests/FocusAssistant.Domain.Tests/FocusAssistant.Domain.Tests.csproj`, `tests/FocusAssistant.Application.Tests/FocusAssistant.Application.Tests.csproj`, `tests/FocusAssistant.Infrastructure.Tests/FocusAssistant.Infrastructure.Tests.csproj` with project references to their corresponding source projects
-- [ ] T086 [P] Add NuGet dependencies to test projects: `xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`, `NSubstitute` to all test `.csproj` files
-- [ ] T087 [P] Create Architecture Decision Records: `docs/adr/001-copilot-sdk.md` (AI runtime selection), `docs/adr/002-json-file-persistence.md` (storage strategy), `docs/adr/003-voice-library-selection.md` (wake word / STT / TTS choices), `docs/adr/004-clean-architecture-structure.md` (layer organization)
+- [X] T001 Create .NET solution file at `FocusAssistant.sln` and project scaffolding for `src/FocusAssistant.Domain/FocusAssistant.Domain.csproj`, `src/FocusAssistant.Application/FocusAssistant.Application.csproj`, `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`, `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`
+- [X] T002 Configure project references in `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `src/FocusAssistant.Application/FocusAssistant.Application.csproj`, `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`: Cli → Application, Infrastructure, Domain; Application → Domain; Infrastructure → Domain
+- [X] T003 [P] Add NuGet dependencies: `GitHub.Copilot.SDK` and `Microsoft.Extensions.AI` to `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `Microsoft.Extensions.Hosting` to `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `System.Text.Json` to `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`
+- [X] T004 [P] Create `.editorconfig` and `Directory.Build.props` at repo root for consistent code style and shared build properties
+- [X] T005 [P] Create `src/FocusAssistant.Cli/Program.cs` with minimal `Host.CreateDefaultBuilder` setup, DI container, and hosted service registration (placeholder services)
+- [X] T085 [P] Create test project scaffolding: `tests/FocusAssistant.Domain.Tests/FocusAssistant.Domain.Tests.csproj`, `tests/FocusAssistant.Application.Tests/FocusAssistant.Application.Tests.csproj`, `tests/FocusAssistant.Infrastructure.Tests/FocusAssistant.Infrastructure.Tests.csproj` with project references to their corresponding source projects
+- [X] T086 [P] Add NuGet dependencies to test projects: `xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`, `NSubstitute` to all test `.csproj` files
+- [X] T087 [P] Create Architecture Decision Records: `docs/adr/001-copilot-sdk.md` (AI runtime selection), `docs/adr/002-json-file-persistence.md` (storage strategy), `docs/adr/003-voice-library-selection.md` (wake word / STT / TTS choices), `docs/adr/004-clean-architecture-structure.md` (layer organization)
 
 **Checkpoint**: Solution builds, projects reference each other correctly, test projects reference source projects, `dotnet build` and `dotnet test` succeed
 
@@ -42,43 +42,43 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create `TaskStatus` value object as an enumeration (InProgress, Paused, Completed) in `src/FocusAssistant.Domain/ValueObjects/TaskStatus.cs`
-- [ ] T007 [P] Create `TimeLogEntry` value object (start time, end time, duration) in `src/FocusAssistant.Domain/ValueObjects/TimeLogEntry.cs`
-- [ ] T008 [P] Create `ReminderInterval` value object (duration, per-task override flag) in `src/FocusAssistant.Domain/ValueObjects/ReminderInterval.cs`
-- [ ] T009 Create `FocusTask` entity with name, status, creation time, time-per-day log, priority ranking, and reminder interval in `src/FocusAssistant.Domain/Entities/FocusTask.cs`
-- [ ] T010 [P] Create `TaskNote` entity with content, timestamp, and parent task reference in `src/FocusAssistant.Domain/Entities/TaskNote.cs`
-- [ ] T011 [P] Create `WorkSession` entity with start time, end time, task IDs worked on, and reflection summary in `src/FocusAssistant.Domain/Entities/WorkSession.cs`
-- [ ] T012 [P] Create `DailyPlan` entity with date, ordered task list, and notes/reminders in `src/FocusAssistant.Domain/Entities/DailyPlan.cs`
-- [ ] T013 Create `TaskAggregate` root that manages FocusTask lifecycle and enforces invariants (only one task in-progress at a time, auto-pause on switch) in `src/FocusAssistant.Domain/Aggregates/TaskAggregate.cs`
-- [ ] T014 [P] Create domain events: `TaskCreatedEvent`, `TaskSwitchedEvent`, `TaskCompletedEvent` in `src/FocusAssistant.Domain/Events/`
-- [ ] T015 Create `ITaskRepository` interface with CRUD operations, find-by-status, and find-by-name in `src/FocusAssistant.Domain/Repositories/ITaskRepository.cs`
-- [ ] T016 [P] Create `ISessionRepository` interface in `src/FocusAssistant.Domain/Repositories/ISessionRepository.cs`
-- [ ] T017 [P] Create `IDailyPlanRepository` interface in `src/FocusAssistant.Domain/Repositories/IDailyPlanRepository.cs`
-- [ ] T018 [P] Create `IUserPreferencesRepository` interface (default reminder interval, idle threshold, reflection time) in `src/FocusAssistant.Domain/Repositories/IUserPreferencesRepository.cs`
-- [ ] T019 Create `JsonFileStore<T>` generic file persistence helper (read, write, atomic save) in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
-- [ ] T020 Create `FileTaskRepository` implementing `ITaskRepository` using `JsonFileStore` in `src/FocusAssistant.Infrastructure/Persistence/FileTaskRepository.cs`
-- [ ] T021 [P] Create `FileSessionRepository` implementing `ISessionRepository` in `src/FocusAssistant.Infrastructure/Persistence/FileSessionRepository.cs`
-- [ ] T022 [P] Create `FileDailyPlanRepository` implementing `IDailyPlanRepository` in `src/FocusAssistant.Infrastructure/Persistence/FileDailyPlanRepository.cs`
-- [ ] T023 [P] Create `FileUserPreferencesRepository` implementing `IUserPreferencesRepository` in `src/FocusAssistant.Infrastructure/Persistence/FileUserPreferencesRepository.cs`
-- [ ] T024 Create `ServiceCollectionExtensions` for registering all Infrastructure services (repositories, voice services) into DI in `src/FocusAssistant.Infrastructure/Extensions/ServiceCollectionExtensions.cs`
-- [ ] T025 Create `SystemPromptBuilder` that constructs the Copilot system message defining the assistant persona, capabilities, and conversation rules in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
-- [ ] T026 Create `CopilotAgentSession` that initializes `CopilotClient`, creates a session with system prompt and tools, handles events, and exposes `SendCommandAsync(string text)` in `src/FocusAssistant.Cli/Agent/CopilotAgentSession.cs`
-- [ ] T088 Create `UserPreferences` entity with default reminder interval, idle check-in threshold, optional reflection time, and wake word in `src/FocusAssistant.Domain/Entities/UserPreferences.cs`
+- [X] T006 Create `TaskStatus` value object as an enumeration (InProgress, Paused, Completed) in `src/FocusAssistant.Domain/ValueObjects/TaskStatus.cs`
+- [X] T007 [P] Create `TimeLogEntry` value object (start time, end time, duration) in `src/FocusAssistant.Domain/ValueObjects/TimeLogEntry.cs`
+- [X] T008 [P] Create `ReminderInterval` value object (duration, per-task override flag) in `src/FocusAssistant.Domain/ValueObjects/ReminderInterval.cs`
+- [X] T009 Create `FocusTask` entity with name, status, creation time, time-per-day log, priority ranking, and reminder interval in `src/FocusAssistant.Domain/Entities/FocusTask.cs`
+- [X] T010 [P] Create `TaskNote` entity with content, timestamp, and parent task reference in `src/FocusAssistant.Domain/Entities/TaskNote.cs`
+- [X] T011 [P] Create `WorkSession` entity with start time, end time, task IDs worked on, and reflection summary in `src/FocusAssistant.Domain/Entities/WorkSession.cs`
+- [X] T012 [P] Create `DailyPlan` entity with date, ordered task list, and notes/reminders in `src/FocusAssistant.Domain/Entities/DailyPlan.cs`
+- [X] T013 Create `TaskAggregate` root that manages FocusTask lifecycle and enforces invariants (only one task in-progress at a time, auto-pause on switch) in `src/FocusAssistant.Domain/Aggregates/TaskAggregate.cs`
+- [X] T014 [P] Create domain events: `TaskCreatedEvent`, `TaskSwitchedEvent`, `TaskCompletedEvent` in `src/FocusAssistant.Domain/Events/`
+- [X] T015 Create `ITaskRepository` interface with CRUD operations, find-by-status, and find-by-name in `src/FocusAssistant.Domain/Repositories/ITaskRepository.cs`
+- [X] T016 [P] Create `ISessionRepository` interface in `src/FocusAssistant.Domain/Repositories/ISessionRepository.cs`
+- [X] T017 [P] Create `IDailyPlanRepository` interface in `src/FocusAssistant.Domain/Repositories/IDailyPlanRepository.cs`
+- [X] T018 [P] Create `IUserPreferencesRepository` interface (default reminder interval, idle threshold, reflection time) in `src/FocusAssistant.Domain/Repositories/IUserPreferencesRepository.cs`
+- [X] T019 Create `JsonFileStore<T>` generic file persistence helper (read, write, atomic save) in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
+- [X] T020 Create `FileTaskRepository` implementing `ITaskRepository` using `JsonFileStore` in `src/FocusAssistant.Infrastructure/Persistence/FileTaskRepository.cs`
+- [X] T021 [P] Create `FileSessionRepository` implementing `ISessionRepository` in `src/FocusAssistant.Infrastructure/Persistence/FileSessionRepository.cs`
+- [X] T022 [P] Create `FileDailyPlanRepository` implementing `IDailyPlanRepository` in `src/FocusAssistant.Infrastructure/Persistence/FileDailyPlanRepository.cs`
+- [X] T023 [P] Create `FileUserPreferencesRepository` implementing `IUserPreferencesRepository` in `src/FocusAssistant.Infrastructure/Persistence/FileUserPreferencesRepository.cs`
+- [X] T024 Create `ServiceCollectionExtensions` for registering all Infrastructure services (repositories, voice services) into DI in `src/FocusAssistant.Infrastructure/Extensions/ServiceCollectionExtensions.cs`
+- [X] T025 Create `SystemPromptBuilder` that constructs the Copilot system message defining the assistant persona, capabilities, and conversation rules in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [X] T026 Create `CopilotAgentSession` that initializes `CopilotClient`, creates a session with system prompt and tools, handles events, and exposes `SendCommandAsync(string text)` in `src/FocusAssistant.Cli/Agent/CopilotAgentSession.cs`
+- [X] T088 Create `UserPreferences` entity with default reminder interval, idle check-in threshold, optional reflection time, and wake word in `src/FocusAssistant.Domain/Entities/UserPreferences.cs`
 
 **TDD**: The following test tasks MUST be written before their corresponding implementation tasks above (Red-Green-Refactor). Write the failing test → implement the entity/service → refactor.
 
-- [ ] T089 Write unit tests for `TaskStatus`, `TimeLogEntry`, `ReminderInterval` value objects in `tests/FocusAssistant.Domain.Tests/ValueObjects/`
-- [ ] T090 Write unit tests for `FocusTask` entity (create, pause, resume, complete, rename, time logging) in `tests/FocusAssistant.Domain.Tests/Entities/FocusTaskTests.cs`
-- [ ] T091 [P] Write unit tests for `TaskNote` entity in `tests/FocusAssistant.Domain.Tests/Entities/TaskNoteTests.cs`
-- [ ] T092 [P] Write unit tests for `WorkSession` entity in `tests/FocusAssistant.Domain.Tests/Entities/WorkSessionTests.cs`
-- [ ] T093 [P] Write unit tests for `DailyPlan` entity in `tests/FocusAssistant.Domain.Tests/Entities/DailyPlanTests.cs`
-- [ ] T094 [P] Write unit tests for `UserPreferences` entity in `tests/FocusAssistant.Domain.Tests/Entities/UserPreferencesTests.cs`
-- [ ] T095 Write unit tests for `TaskAggregate` invariants (single in-progress, auto-pause, lifecycle rules) in `tests/FocusAssistant.Domain.Tests/Aggregates/TaskAggregateTests.cs`
-- [ ] T096 Write integration tests for `JsonFileStore<T>` (read, write, atomic save, concurrent access) in `tests/FocusAssistant.Infrastructure.Tests/Persistence/JsonFileStoreTests.cs`
-- [ ] T097 Write integration tests for `FileTaskRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileTaskRepositoryTests.cs`
-- [ ] T098 [P] Write integration tests for `FileSessionRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileSessionRepositoryTests.cs`
-- [ ] T099 [P] Write integration tests for `FileDailyPlanRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileDailyPlanRepositoryTests.cs`
-- [ ] T100 [P] Write integration tests for `FileUserPreferencesRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileUserPreferencesRepositoryTests.cs`
+- [X] T089 Write unit tests for `TaskStatus`, `TimeLogEntry`, `ReminderInterval` value objects in `tests/FocusAssistant.Domain.Tests/ValueObjects/`
+- [X] T090 Write unit tests for `FocusTask` entity (create, pause, resume, complete, rename, time logging) in `tests/FocusAssistant.Domain.Tests/Entities/FocusTaskTests.cs`
+- [X] T091 [P] Write unit tests for `TaskNote` entity in `tests/FocusAssistant.Domain.Tests/Entities/TaskNoteTests.cs`
+- [X] T092 [P] Write unit tests for `WorkSession` entity in `tests/FocusAssistant.Domain.Tests/Entities/WorkSessionTests.cs`
+- [X] T093 [P] Write unit tests for `DailyPlan` entity in `tests/FocusAssistant.Domain.Tests/Entities/DailyPlanTests.cs`
+- [X] T094 [P] Write unit tests for `UserPreferences` entity in `tests/FocusAssistant.Domain.Tests/Entities/UserPreferencesTests.cs`
+- [X] T095 Write unit tests for `TaskAggregate` invariants (single in-progress, auto-pause, lifecycle rules) in `tests/FocusAssistant.Domain.Tests/Aggregates/TaskAggregateTests.cs`
+- [X] T096 Write integration tests for `JsonFileStore<T>` (read, write, atomic save, concurrent access) in `tests/FocusAssistant.Infrastructure.Tests/Persistence/JsonFileStoreTests.cs`
+- [X] T097 Write integration tests for `FileTaskRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileTaskRepositoryTests.cs`
+- [X] T098 [P] Write integration tests for `FileSessionRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileSessionRepositoryTests.cs`
+- [X] T099 [P] Write integration tests for `FileDailyPlanRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileDailyPlanRepositoryTests.cs`
+- [X] T100 [P] Write integration tests for `FileUserPreferencesRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileUserPreferencesRepositoryTests.cs`
 
 **Checkpoint**: Domain compiles with all entities and interfaces. Infrastructure compiles with file-based repositories. Copilot agent session can be instantiated. All domain unit tests and infrastructure integration tests pass. `dotnet build` and `dotnet test` succeed across all projects.
 
@@ -92,30 +92,30 @@
 
 ### Implementation for User Story 1
 
-- [ ] T027 [US1] Create `TaskTrackingService` with methods: CreateTask, SwitchTask, CompleteTask, GetCurrentTask, GetOpenTasks, GetCompletedTasks in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
-- [ ] T028 [US1] Create `CreateTaskUseCase` that creates a new task, auto-pauses any current in-progress task, and returns confirmation in `src/FocusAssistant.Application/UseCases/CreateTaskUseCase.cs`
-- [ ] T029 [US1] Create `SwitchTaskUseCase` that pauses current task, resumes or creates target task, updates time logs in `src/FocusAssistant.Application/UseCases/SwitchTaskUseCase.cs`
-- [ ] T030 [US1] Create `CompleteTaskUseCase` that marks a task as completed, stops time tracking, and returns confirmation in `src/FocusAssistant.Application/UseCases/CompleteTaskUseCase.cs`
-- [ ] T031 [P] [US1] Create `RenameTaskUseCase` in `src/FocusAssistant.Application/UseCases/RenameTaskUseCase.cs`
-- [ ] T032 [P] [US1] Create `DeleteTaskUseCase` (with confirmation flag) in `src/FocusAssistant.Application/UseCases/DeleteTaskUseCase.cs`
-- [ ] T033 [P] [US1] Create `MergeTasksUseCase` that combines notes and time logs in `src/FocusAssistant.Application/UseCases/MergeTasksUseCase.cs`
-- [ ] T034 [US1] Create `GetOpenTasksUseCase` that returns all non-completed tasks with status and time spent today in `src/FocusAssistant.Application/UseCases/GetOpenTasksUseCase.cs`
-- [ ] T035 [US1] Define Copilot tools for US1 (`create_task`, `switch_task`, `complete_task`, `rename_task`, `delete_task`, `merge_tasks`, `get_current_task`, `get_open_tasks`) using `AIFunctionFactory.Create` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
-- [ ] T036 [US1] Register US1 tools in `CopilotAgentSession` session config and update system prompt with task tracking instructions in `src/FocusAssistant.Cli/Agent/CopilotAgentSession.cs`
-- [ ] T037 [US1] Implement `IVoiceInputService` interface in `src/FocusAssistant.Application/Interfaces/IVoiceInputService.cs` and stub `SpeechToTextService` in `src/FocusAssistant.Infrastructure/Voice/SpeechToTextService.cs` (initially reads from stdin for CLI testing)
-- [ ] T038 [US1] Implement `IVoiceOutputService` interface in `src/FocusAssistant.Application/Interfaces/IVoiceOutputService.cs` and stub `TextToSpeechService` in `src/FocusAssistant.Infrastructure/Voice/TextToSpeechService.cs` (initially writes to stdout for CLI testing)
-- [ ] T039 [US1] Create `VoiceListenerService` as `BackgroundService` that loops: listen for wake word → capture speech → send to `CopilotAgentSession` → speak response in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
-- [ ] T040 [US1] Wire up all US1 services and hosted services in `Program.cs` DI registration and update `ServiceCollectionExtensions` in `src/FocusAssistant.Cli/Program.cs`
-- [ ] T041 [US1] Handle duplicate task name edge case in `src/FocusAssistant.Application/UseCases/CreateTaskUseCase.cs` to check for existing task with same name and return a disambiguation prompt
+- [X] T027 [US1] Create `TaskTrackingService` with methods: CreateTask, SwitchTask, CompleteTask, GetCurrentTask, GetOpenTasks, GetCompletedTasks in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
+- [X] T028 [US1] Create `CreateTaskUseCase` that creates a new task, auto-pauses any current in-progress task, and returns confirmation in `src/FocusAssistant.Application/UseCases/CreateTaskUseCase.cs`
+- [X] T029 [US1] Create `SwitchTaskUseCase` that pauses current task, resumes or creates target task, updates time logs in `src/FocusAssistant.Application/UseCases/SwitchTaskUseCase.cs`
+- [X] T030 [US1] Create `CompleteTaskUseCase` that marks a task as completed, stops time tracking, and returns confirmation in `src/FocusAssistant.Application/UseCases/CompleteTaskUseCase.cs`
+- [X] T031 [P] [US1] Create `RenameTaskUseCase` in `src/FocusAssistant.Application/UseCases/RenameTaskUseCase.cs`
+- [X] T032 [P] [US1] Create `DeleteTaskUseCase` (with confirmation flag) in `src/FocusAssistant.Application/UseCases/DeleteTaskUseCase.cs`
+- [X] T033 [P] [US1] Create `MergeTasksUseCase` that combines notes and time logs in `src/FocusAssistant.Application/UseCases/MergeTasksUseCase.cs`
+- [X] T034 [US1] Create `GetOpenTasksUseCase` that returns all non-completed tasks with status and time spent today in `src/FocusAssistant.Application/UseCases/GetOpenTasksUseCase.cs`
+- [X] T035 [US1] Define Copilot tools for US1 (`create_task`, `switch_task`, `complete_task`, `rename_task`, `delete_task`, `merge_tasks`, `get_current_task`, `get_open_tasks`) using `AIFunctionFactory.Create` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
+- [X] T036 [US1] Register US1 tools in `CopilotAgentSession` session config and update system prompt with task tracking instructions in `src/FocusAssistant.Cli/Agent/CopilotAgentSession.cs`
+- [X] T037 [US1] Implement `IVoiceInputService` interface in `src/FocusAssistant.Application/Interfaces/IVoiceInputService.cs` and stub `SpeechToTextService` in `src/FocusAssistant.Infrastructure/Voice/SpeechToTextService.cs` (initially reads from stdin for CLI testing)
+- [X] T038 [US1] Implement `IVoiceOutputService` interface in `src/FocusAssistant.Application/Interfaces/IVoiceOutputService.cs` and stub `TextToSpeechService` in `src/FocusAssistant.Infrastructure/Voice/TextToSpeechService.cs` (initially writes to stdout for CLI testing)
+- [X] T039 [US1] Create `VoiceListenerService` as `BackgroundService` that loops: listen for wake word → capture speech → send to `CopilotAgentSession` → speak response in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
+- [X] T040 [US1] Wire up all US1 services and hosted services in `Program.cs` DI registration and update `ServiceCollectionExtensions` in `src/FocusAssistant.Cli/Program.cs`
+- [X] T041 [US1] Handle duplicate task name edge case in `src/FocusAssistant.Application/UseCases/CreateTaskUseCase.cs` to check for existing task with same name and return a disambiguation prompt
 
 **TDD**: Write failing tests before implementing use cases above.
 
-- [ ] T101 [US1] Write unit tests for `TaskTrackingService` in `tests/FocusAssistant.Application.Tests/Services/TaskTrackingServiceTests.cs`
-- [ ] T102 [US1] Write unit tests for `CreateTaskUseCase` (create, auto-pause, duplicate name handling) in `tests/FocusAssistant.Application.Tests/UseCases/CreateTaskUseCaseTests.cs`
-- [ ] T103 [US1] Write unit tests for `SwitchTaskUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/SwitchTaskUseCaseTests.cs`
-- [ ] T104 [US1] Write unit tests for `CompleteTaskUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/CompleteTaskUseCaseTests.cs`
-- [ ] T105 [US1] [P] Write unit tests for `RenameTaskUseCase`, `DeleteTaskUseCase`, `MergeTasksUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/`
-- [ ] T106 [US1] Write unit tests for `GetOpenTasksUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/GetOpenTasksUseCaseTests.cs`
+- [X] T101 [US1] Write unit tests for `TaskTrackingService` in `tests/FocusAssistant.Application.Tests/Services/TaskTrackingServiceTests.cs`
+- [X] T102 [US1] Write unit tests for `CreateTaskUseCase` (create, auto-pause, duplicate name handling) in `tests/FocusAssistant.Application.Tests/UseCases/CreateTaskUseCaseTests.cs`
+- [X] T103 [US1] Write unit tests for `SwitchTaskUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/SwitchTaskUseCaseTests.cs`
+- [X] T104 [US1] Write unit tests for `CompleteTaskUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/CompleteTaskUseCaseTests.cs`
+- [X] T105 [US1] [P] Write unit tests for `RenameTaskUseCase`, `DeleteTaskUseCase`, `MergeTasksUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/`
+- [X] T106 [US1] Write unit tests for `GetOpenTasksUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/GetOpenTasksUseCaseTests.cs`
 
 **Checkpoint**: User can run the CLI, type commands (simulated voice), and create/switch/complete/rename/delete/query tasks. Data persists to disk across restarts. All US1 unit tests pass with ≥90% branch coverage.
 
