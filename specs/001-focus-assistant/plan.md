@@ -7,6 +7,20 @@
 
 A voice-driven personal task-tracking assistant that helps a tech worker manage context switches throughout the workday. Built with .NET 8 using the GitHub Copilot SDK for natural language understanding and intent routing. The assistant listens for a wake word, interprets voice commands via Copilot, manages task state through DDD domain entities, persists data to local disk, and provides proactive reminders, task notes, end-of-day reflection, and morning briefings — all via CLI with a background listener service.
 
+## Bounded Context
+
+This project operates within a single **Focus Management** bounded context. All domain concepts (FocusTask, TaskNote, WorkSession, DailyPlan, UserPreferences) belong to this context and share a unified ubiquitous language. No cross-context communication is required at this stage.
+
+**Ubiquitous Language**:
+- **FocusTask**: A unit of work the user is tracking (prefixed to avoid ambiguity with system tasks)
+- **TaskNote**: A timestamped piece of context attached to a FocusTask
+- **WorkSession**: A continuous period of interaction (typically one workday)
+- **DailyPlan**: Prioritized task list generated during end-of-day reflection
+- **UserPreferences**: Configuration for reminder intervals, idle thresholds, and reflection time
+- **TaskAggregate**: The aggregate root managing FocusTask lifecycle and enforcing invariants
+
+If future features introduce distinct concerns (e.g., team collaboration, analytics), they MUST be modeled as separate bounded contexts with explicit integration events.
+
 ## Technical Context
 
 **Language/Version**: C# / .NET 8.0  
@@ -26,6 +40,18 @@ A voice-driven personal task-tracking assistant that helps a tech worker manage 
 **Performance Goals**: Voice command response < 3 seconds end-to-end  
 **Constraints**: Must run reliably for 8+ hours continuously; all data persisted locally  
 **Scale/Scope**: Single user, single machine
+
+### Performance Budgets
+
+| Metric                           | Target         | Measurement                      |
+| -------------------------------- | -------------- | -------------------------------- |
+| Voice command E2E response       | < 3s at p95    | Wake-word detection to TTS start |
+| CLI command response (text mode) | < 500ms at p95 | Input to output timer            |
+| Application startup              | < 2s           | `dotnet run` to ready            |
+| Memory (8hr session)             | < 200 MB RSS   | Process monitoring               |
+| Memory growth rate               | < 5 MB/hour    | RSS monitoring over 8hr          |
+| File I/O per command             | < 50ms         | Persistence timing               |
+| CPU idle (between commands)      | < 2%           | Profiler sampling                |
 
 ## Project Structure
 
@@ -48,7 +74,8 @@ src/
 │   │   ├── FocusTask.cs
 │   │   ├── TaskNote.cs
 │   │   ├── WorkSession.cs
-│   │   └── DailyPlan.cs
+│   │   ├── DailyPlan.cs
+│   │   └── UserPreferences.cs
 │   ├── ValueObjects/
 │   │   ├── TaskStatus.cs
 │   │   ├── TimeLogEntry.cs
@@ -176,3 +203,5 @@ The Copilot SDK serves as the "brain" of the assistant:
 3. **File-based persistence**: JSON files in `~/.focus-assistant/data/` behind repository interfaces. Swappable to SQLite/PostgreSQL later by implementing new repository classes.
 4. **Background hosted services**: `VoiceListenerService` for continuous wake-word detection and command capture; `ReminderBackgroundService` for timed check-ins and reminders.
 5. **First-use onboarding**: Detected by checking for preferences file; if absent, the system prompt instructs Copilot to guide the user through setup before normal operation.
+6. **Session lifecycle**: `WorkSession` entities are implicitly managed — created on `VoiceListenerService` startup, ended on graceful shutdown or end-of-day reflection. No explicit create/end session user command is needed; the session tracks tasks worked on and stores the reflection summary.
+7. **Data directory**: All persistent data stored under `~/.focus-assistant/data/` by default, configurable via `FOCUS_ASSISTANT_DATA_DIR` environment variable. Directory is created on first write.

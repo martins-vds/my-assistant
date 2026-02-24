@@ -142,7 +142,7 @@ The assistant runs continuously and listens for my voice. It can distinguish bet
 
 #### Task Management
 - **FR-001**: System MUST allow users to create tasks via voice by describing what they are starting to work on.
-- **FR-002**: System MUST track task status with at minimum the following states: in-progress, paused, completed.
+- **FR-002**: System MUST track task status with at minimum the following states: in-progress, paused, completed, archived.
 - **FR-003**: System MUST automatically pause the current task when the user starts or switches to a different task.
 - **FR-004**: System MUST allow users to explicitly mark tasks as completed via voice.
 - **FR-005**: System MUST allow users to query their current task, all open tasks, and completed tasks via voice.
@@ -179,34 +179,34 @@ The assistant runs continuously and listens for my voice. It can distinguish bet
 - **FR-024**: System MUST read back previous notes when the user resumes a task from a prior day.
 
 #### Voice Interface
-- **FR-025**: System MUST listen continuously for a wake word (e.g., "Hey Focus") without requiring a physical button press. Upon detecting the wake word, the system enters active listening mode to capture the user's command.
+- **FR-025**: System MUST listen continuously for a wake word (default: "Hey Focus") without requiring a physical button press. Upon detecting the wake word, the system enters active listening mode to capture the user's command. The wake word is configurable via UserPreferences.
 - **FR-026**: System MUST use wake-word detection to distinguish between commands directed at the assistant and background speech/noise. Only audio following wake-word detection is transcribed and interpreted.
-- **FR-027**: System MUST respond to commands both verbally (spoken) and operate reliably during extended sessions (8+ hours).
-- **FR-028**: System MUST stop speaking and listen when the user begins speaking mid-response.
+- **FR-027**: System MUST respond to commands verbally (spoken output) and operate reliably during extended sessions (8+ hours).
+- **FR-028**: System MUST stop speaking and listen when the user begins speaking mid-response (barge-in). Implementation: TTS output is monitored alongside microphone input; when voice activity is detected during TTS playback, TTS stops immediately and the system enters active listening mode.
 - **FR-029**: System MUST ask for clarification when it cannot confidently interpret a command.
 - **FR-030**: System MUST retain all task data (completed, paused, and in-progress) indefinitely until the user explicitly deletes or archives tasks. No automatic purging or expiration.
 
 ### Key Entities
 
-- **Task**: Represents a unit of work. Key attributes: name/description, status (in-progress, paused, completed), creation time, time-per-day log, associated notes, priority ranking.
-- **Note**: A timestamped piece of context attached to a Task. Key attributes: content (transcribed text), timestamp, parent task reference.
-- **Session**: A continuous period of interaction (typically one workday). Key attributes: start time, end time, tasks worked on, reflection summary.
-- **Daily Plan**: The user's prioritized task list generated during end-of-day reflection. Key attributes: date for, ordered list of tasks, notes/reminders.
-- **User Preferences**: Configuration set during onboarding and adjustable at any time. Key attributes: default reminder interval, idle check-in threshold, optional automatic reflection time, wake word (if customizable).
+- **FocusTask**: Represents a unit of work (named "FocusTask" to avoid ambiguity with system tasks). Key attributes: name/description, status (in-progress, paused, completed, archived), creation time, time-per-day log, associated notes, priority ranking, per-task reminder interval.
+- **TaskNote**: A timestamped piece of context attached to a FocusTask. Key attributes: content (transcribed text), timestamp, optional parent task reference (null for standalone notes).
+- **WorkSession**: A continuous period of interaction (typically one workday). Key attributes: start time, end time, task IDs worked on, reflection summary. Lifecycle is implicit — created on service startup, ended on shutdown or reflection.
+- **DailyPlan**: The user's prioritized task list generated during end-of-day reflection. Key attributes: date for, ordered list of task IDs, notes/reminders.
+- **UserPreferences**: Configuration set during onboarding and adjustable at any time. Key attributes: default reminder interval, idle check-in threshold, optional automatic reflection time, wake word (default: "Hey Focus").
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: User can create a task, switch tasks, and query open tasks entirely by voice in under 5 seconds per interaction.
-- **SC-002**: 90% of spoken commands are correctly interpreted and acted upon on the first attempt.
-- **SC-003**: User reports no forgotten or lost tasks after one full week of daily use.
+- **SC-002**: 90% of spoken commands are correctly interpreted and acted upon on the first attempt. *(Measured via command success/failure logging in the application.)*
+- **SC-003**: User reports no forgotten or lost tasks after one full week of daily use. *(Qualitative — validated via user feedback.)*
 - **SC-004**: Paused tasks are surfaced via reminders within the configured time window 100% of the time.
 - **SC-005**: End-of-day reflection takes less than 5 minutes and covers all tasks worked on that day.
 - **SC-006**: Morning briefing accurately recalls all open tasks and priorities from the previous session.
 - **SC-007**: Notes are correctly attached to the right task at least 95% of the time.
 - **SC-008**: The assistant runs continuously for a full 8-hour workday without crashes or degraded responsiveness.
-- **SC-009**: User self-reports a reduction in context-switching anxiety and task-tracking overhead after one week of use.
+- **SC-009**: User self-reports a reduction in context-switching anxiety and task-tracking overhead after one week of use. *(Qualitative — validated via user feedback.)*
 
 ## Clarifications
 

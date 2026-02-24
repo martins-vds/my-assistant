@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/001-focus-assistant/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories)
 
-**Tests**: Not explicitly requested in the feature specification. Test tasks are omitted.
+**Tests**: TDD is mandatory per project constitution (Principle II). Test tasks are included in each phase — tests MUST be written and confirmed to fail before implementation code per Red-Green-Refactor cycle.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -28,8 +28,11 @@
 - [ ] T003 [P] Add NuGet dependencies: `GitHub.Copilot.SDK` and `Microsoft.Extensions.AI` to `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `Microsoft.Extensions.Hosting` to `src/FocusAssistant.Cli/FocusAssistant.Cli.csproj`, `System.Text.Json` to `src/FocusAssistant.Infrastructure/FocusAssistant.Infrastructure.csproj`
 - [ ] T004 [P] Create `.editorconfig` and `Directory.Build.props` at repo root for consistent code style and shared build properties
 - [ ] T005 [P] Create `src/FocusAssistant.Cli/Program.cs` with minimal `Host.CreateDefaultBuilder` setup, DI container, and hosted service registration (placeholder services)
+- [ ] T085 [P] Create test project scaffolding: `tests/FocusAssistant.Domain.Tests/FocusAssistant.Domain.Tests.csproj`, `tests/FocusAssistant.Application.Tests/FocusAssistant.Application.Tests.csproj`, `tests/FocusAssistant.Infrastructure.Tests/FocusAssistant.Infrastructure.Tests.csproj` with project references to their corresponding source projects
+- [ ] T086 [P] Add NuGet dependencies to test projects: `xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`, `NSubstitute` to all test `.csproj` files
+- [ ] T087 [P] Create Architecture Decision Records: `docs/adr/001-copilot-sdk.md` (AI runtime selection), `docs/adr/002-json-file-persistence.md` (storage strategy), `docs/adr/003-voice-library-selection.md` (wake word / STT / TTS choices), `docs/adr/004-clean-architecture-structure.md` (layer organization)
 
-**Checkpoint**: Solution builds, projects reference each other correctly, `dotnet build` succeeds
+**Checkpoint**: Solution builds, projects reference each other correctly, test projects reference source projects, `dotnet build` and `dotnet test` succeed
 
 ---
 
@@ -60,8 +63,24 @@
 - [ ] T024 Create `ServiceCollectionExtensions` for registering all Infrastructure services (repositories, voice services) into DI in `src/FocusAssistant.Infrastructure/Extensions/ServiceCollectionExtensions.cs`
 - [ ] T025 Create `SystemPromptBuilder` that constructs the Copilot system message defining the assistant persona, capabilities, and conversation rules in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 - [ ] T026 Create `CopilotAgentSession` that initializes `CopilotClient`, creates a session with system prompt and tools, handles events, and exposes `SendCommandAsync(string text)` in `src/FocusAssistant.Cli/Agent/CopilotAgentSession.cs`
+- [ ] T088 Create `UserPreferences` entity with default reminder interval, idle check-in threshold, optional reflection time, and wake word in `src/FocusAssistant.Domain/Entities/UserPreferences.cs`
 
-**Checkpoint**: Domain compiles with all entities and interfaces. Infrastructure compiles with file-based repositories. Copilot agent session can be instantiated. `dotnet build` succeeds across all projects.
+**TDD**: The following test tasks MUST be written before their corresponding implementation tasks above (Red-Green-Refactor). Write the failing test → implement the entity/service → refactor.
+
+- [ ] T089 Write unit tests for `TaskStatus`, `TimeLogEntry`, `ReminderInterval` value objects in `tests/FocusAssistant.Domain.Tests/ValueObjects/`
+- [ ] T090 Write unit tests for `FocusTask` entity (create, pause, resume, complete, rename, time logging) in `tests/FocusAssistant.Domain.Tests/Entities/FocusTaskTests.cs`
+- [ ] T091 [P] Write unit tests for `TaskNote` entity in `tests/FocusAssistant.Domain.Tests/Entities/TaskNoteTests.cs`
+- [ ] T092 [P] Write unit tests for `WorkSession` entity in `tests/FocusAssistant.Domain.Tests/Entities/WorkSessionTests.cs`
+- [ ] T093 [P] Write unit tests for `DailyPlan` entity in `tests/FocusAssistant.Domain.Tests/Entities/DailyPlanTests.cs`
+- [ ] T094 [P] Write unit tests for `UserPreferences` entity in `tests/FocusAssistant.Domain.Tests/Entities/UserPreferencesTests.cs`
+- [ ] T095 Write unit tests for `TaskAggregate` invariants (single in-progress, auto-pause, lifecycle rules) in `tests/FocusAssistant.Domain.Tests/Aggregates/TaskAggregateTests.cs`
+- [ ] T096 Write integration tests for `JsonFileStore<T>` (read, write, atomic save, concurrent access) in `tests/FocusAssistant.Infrastructure.Tests/Persistence/JsonFileStoreTests.cs`
+- [ ] T097 Write integration tests for `FileTaskRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileTaskRepositoryTests.cs`
+- [ ] T098 [P] Write integration tests for `FileSessionRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileSessionRepositoryTests.cs`
+- [ ] T099 [P] Write integration tests for `FileDailyPlanRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileDailyPlanRepositoryTests.cs`
+- [ ] T100 [P] Write integration tests for `FileUserPreferencesRepository` in `tests/FocusAssistant.Infrastructure.Tests/Persistence/FileUserPreferencesRepositoryTests.cs`
+
+**Checkpoint**: Domain compiles with all entities and interfaces. Infrastructure compiles with file-based repositories. Copilot agent session can be instantiated. All domain unit tests and infrastructure integration tests pass. `dotnet build` and `dotnet test` succeed across all projects.
 
 ---
 
@@ -89,7 +108,16 @@
 - [ ] T040 [US1] Wire up all US1 services and hosted services in `Program.cs` DI registration and update `ServiceCollectionExtensions` in `src/FocusAssistant.Cli/Program.cs`
 - [ ] T041 [US1] Handle duplicate task name edge case in `src/FocusAssistant.Application/UseCases/CreateTaskUseCase.cs` to check for existing task with same name and return a disambiguation prompt
 
-**Checkpoint**: User can run the CLI, type commands (simulated voice), and create/switch/complete/rename/delete/query tasks. Data persists to disk across restarts.
+**TDD**: Write failing tests before implementing use cases above.
+
+- [ ] T101 [US1] Write unit tests for `TaskTrackingService` in `tests/FocusAssistant.Application.Tests/Services/TaskTrackingServiceTests.cs`
+- [ ] T102 [US1] Write unit tests for `CreateTaskUseCase` (create, auto-pause, duplicate name handling) in `tests/FocusAssistant.Application.Tests/UseCases/CreateTaskUseCaseTests.cs`
+- [ ] T103 [US1] Write unit tests for `SwitchTaskUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/SwitchTaskUseCaseTests.cs`
+- [ ] T104 [US1] Write unit tests for `CompleteTaskUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/CompleteTaskUseCaseTests.cs`
+- [ ] T105 [US1] [P] Write unit tests for `RenameTaskUseCase`, `DeleteTaskUseCase`, `MergeTasksUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/`
+- [ ] T106 [US1] Write unit tests for `GetOpenTasksUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/GetOpenTasksUseCaseTests.cs`
+
+**Checkpoint**: User can run the CLI, type commands (simulated voice), and create/switch/complete/rename/delete/query tasks. Data persists to disk across restarts. All US1 unit tests pass with ≥90% branch coverage.
 
 ---
 
@@ -110,7 +138,12 @@
 - [ ] T048 [US2] Add post-completion suggestion logic: when `CompleteTaskUseCase` runs, query paused tasks and include suggestion in response in `src/FocusAssistant.Application/UseCases/CompleteTaskUseCase.cs`
 - [ ] T049 [US2] Wire up `ReminderScheduler` and `ReminderBackgroundService` in DI registration in `src/FocusAssistant.Cli/Program.cs`
 
-**Checkpoint**: Assistant proactively checks in after idle periods, reminds about paused tasks, does not interrupt during focus, and suggests paused tasks after completion.
+**TDD**: Write failing tests before implementing use cases above.
+
+- [ ] T107 [US2] Write unit tests for `ReminderScheduler` (idle detection, reminder intervals, per-task overrides, suppression during focus) in `tests/FocusAssistant.Application.Tests/Services/ReminderSchedulerTests.cs`
+- [ ] T108 [US2] Write unit tests for `SetReminderUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/SetReminderUseCaseTests.cs`
+
+**Checkpoint**: Assistant proactively checks in after idle periods, reminds about paused tasks, does not interrupt during focus, and suggests paused tasks after completion. All US2 unit tests pass.
 
 ---
 
@@ -129,7 +162,12 @@
 - [ ] T054 [US3] Define Copilot tools `add_note` and `get_task_notes` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
 - [ ] T055 [US3] Update system prompt with note-taking instructions and automatic note readback behavior in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 
-**Checkpoint**: Notes can be added, retrieved, and are automatically read back on task resumption.
+**TDD**: Write failing tests before implementing use cases above.
+
+- [ ] T109 [US3] Write unit tests for `AddNoteUseCase` (attach to task, standalone note handling, timestamp) in `tests/FocusAssistant.Application.Tests/UseCases/AddNoteUseCaseTests.cs`
+- [ ] T110 [US3] Write unit tests for `GetTaskNotesUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/GetTaskNotesUseCaseTests.cs`
+
+**Checkpoint**: Notes can be added, retrieved, and are automatically read back on task resumption. All US3 unit tests pass.
 
 ---
 
@@ -148,7 +186,12 @@
 - [ ] T060 [US4] Define Copilot tools `start_reflection`, `set_priorities`, `get_daily_summary` in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
 - [ ] T061 [US4] Update system prompt with reflection mode behavior: structured walkthrough, priority setting, confirmation in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 
-**Checkpoint**: End-of-day reflection works via both user trigger and scheduled prompt. Priorities are saved.
+**TDD**: Write failing tests before implementing use cases above.
+
+- [ ] T111 [US4] Write unit tests for `ReflectionService` (daily summary, task time aggregation) in `tests/FocusAssistant.Application.Tests/Services/ReflectionServiceTests.cs`
+- [ ] T112 [US4] Write unit tests for `StartReflectionUseCase` and `SetPrioritiesUseCase` in `tests/FocusAssistant.Application.Tests/UseCases/`
+
+**Checkpoint**: End-of-day reflection works via both user trigger and scheduled prompt. Priorities are saved. All US4 unit tests pass.
 
 ---
 
@@ -167,7 +210,11 @@
 - [ ] T066 [US5] Update system prompt with morning briefing rules: auto-trigger on session start, greet user, read priorities in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 - [ ] T067 [US5] Wire session start detection in `VoiceListenerService` or `CopilotAgentSession` to automatically invoke morning briefing on first interaction of a new session in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
 
-**Checkpoint**: Morning briefing fires on new-day session start with complete carry-over data.
+**TDD**: Write failing tests before implementing use cases above.
+
+- [ ] T113 [US5] Write unit tests for `GetMorningBriefingUseCase` (single-day, multi-day gap, no prior session) in `tests/FocusAssistant.Application.Tests/UseCases/GetMorningBriefingUseCaseTests.cs`
+
+**Checkpoint**: Morning briefing fires on new-day session start with complete carry-over data. All US5 unit tests pass.
 
 ---
 
@@ -186,20 +233,29 @@
 - [ ] T072 [US6] Add graceful shutdown and long-running stability handling: ensure `CopilotClient` auto-restarts on crash, voice services recover from audio device errors in `src/FocusAssistant.Cli/HostedServices/VoiceListenerService.cs`
 - [ ] T073 [US6] Update system prompt with voice-specific clarification rules: ask for clarification on low-confidence transcriptions in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 
-**Checkpoint**: Full voice pipeline operational: wake word → speech-to-text → Copilot → text-to-speech, running reliably for extended sessions.
+**TDD**: Write failing tests for voice service contracts.
+
+- [ ] T114 [US6] Write integration tests for `WakeWordDetector`, `SpeechToTextService`, `TextToSpeechService` contracts in `tests/FocusAssistant.Infrastructure.Tests/Voice/`
+
+**Checkpoint**: Full voice pipeline operational: wake word → speech-to-text → Copilot → text-to-speech, running reliably for extended sessions. All voice integration tests pass.
 
 ---
 
 ## Phase 9: First-Use Onboarding
 
 **Purpose**: Guide the user through initial preference setup on first launch
+**Depends on**: Phase 3 (US1) — T074 modifies `TaskTrackingService` created in T027
 
 - [ ] T074 Create first-use detection logic: check if preferences file exists; if not, flag onboarding needed in `src/FocusAssistant.Application/Services/TaskTrackingService.cs`
 - [ ] T075 Define Copilot tool `save_preferences` for persisting user preferences (default reminder interval, idle threshold, reflection time) in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
 - [ ] T076 Update system prompt with onboarding instructions: on first use, walk user through preference setup before normal operation in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
 - [ ] T077 Define Copilot tool `update_preferences` for changing preferences at any time via voice in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
 
-**Checkpoint**: First launch triggers guided preference setup; preferences persist and are changeable at any time.
+**TDD**: Write failing tests for onboarding flow.
+
+- [ ] T115 Write unit tests for first-use detection and preference persistence in `tests/FocusAssistant.Application.Tests/Services/OnboardingTests.cs`
+
+**Checkpoint**: First launch triggers guided preference setup; preferences persist and are changeable at any time. All onboarding tests pass.
 
 ---
 
@@ -214,8 +270,11 @@
 - [ ] T082 [P] Add archive/bulk-delete support: create `ArchiveTasksUseCase` for cleaning up old completed tasks in `src/FocusAssistant.Application/UseCases/ArchiveTasksUseCase.cs`
 - [ ] T083 Define Copilot tool `archive_tasks` for bulk archival in `src/FocusAssistant.Cli/Agent/ToolDefinitions.cs`
 - [ ] T084 Final review of system prompt for completeness: ensure all edge cases, conversation rules, and tool descriptions are documented in `src/FocusAssistant.Cli/Agent/SystemPromptBuilder.cs`
+- [ ] T116 [P] Add input validation and sanitization for all external input (voice-transcribed text, CLI input) at the application service boundary in `src/FocusAssistant.Application/Services/`
+- [ ] T117 [P] Document public APIs, domain models, and key architectural decisions in `docs/` (domain model reference, tool API catalog, system prompt design notes)
+- [ ] T118 [P] Configure default data directory `~/.focus-assistant/data/` with environment variable override `FOCUS_ASSISTANT_DATA_DIR` in `src/FocusAssistant.Infrastructure/Persistence/JsonFileStore.cs`
 
-**Checkpoint**: All edge cases handled, data is crash-safe, logging is comprehensive, archive support is available.
+**Checkpoint**: All edge cases handled, data is crash-safe, logging is comprehensive, archive support is available. Input validation in place. Documentation complete.
 
 ---
 
@@ -231,7 +290,7 @@
 - **User Story 4 (Phase 6)**: Depends on Foundational + US1 (needs task data for reflection)
 - **User Story 5 (Phase 7)**: Depends on US4 (needs DailyPlan created during reflection)
 - **User Story 6 (Phase 8)**: Depends on US1 (needs CLI pipeline working to add real voice)
-- **Onboarding (Phase 9)**: Can start after Foundational, but recommend after US2 (reminder prefs)
+- **Onboarding (Phase 9)**: Depends on US1/Phase 3 (modifies TaskTrackingService from T027); recommend after US2 (reminder prefs relevant)
 - **Polish (Phase 10)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
@@ -300,10 +359,10 @@ Phase 8 (US6): T068 "Implement WakeWordDetector"
 
 ### MVP First (User Story 1 Only)
 
-1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (CRITICAL — blocks all stories)
-3. Complete Phase 3: User Story 1
-4. **STOP and VALIDATE**: Test task tracking via CLI text input
+1. Complete Phase 1: Setup (including test project scaffolding and ADRs)
+2. Complete Phase 2: Foundational + domain/infrastructure tests (CRITICAL — blocks all stories)
+3. Complete Phase 3: User Story 1 + use case tests (TDD: write tests first)
+4. **STOP and VALIDATE**: Run full test suite, test task tracking via CLI text input
 5. Deploy/demo if ready — this is the MVP
 
 ### Incremental Delivery
