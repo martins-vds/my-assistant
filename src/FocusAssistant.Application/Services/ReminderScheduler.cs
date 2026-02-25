@@ -106,8 +106,9 @@ public sealed class ReminderScheduler
 
     /// <summary>
     /// Checks if an idle check-in is due based on user preferences.
-    /// Returns true if the user has been idle longer than their configured threshold
-    /// and there is no task currently in progress.
+    /// Returns true if the user has been idle longer than their configured threshold.
+    /// Triggers when there is no active task, OR when the user has a task in progress
+    /// but has been idle for 3x the threshold (likely stepped away).
     /// </summary>
     public async Task<bool> IsIdleCheckInDueAsync(CancellationToken ct = default)
     {
@@ -120,8 +121,12 @@ public sealed class ReminderScheduler
         var idleTime = GetIdleTime();
         var currentTask = _tracking.GetCurrentTask();
 
-        // Idle check-in: user has been idle and has no current task
-        return currentTask is null && idleTime >= threshold;
+        // No active task — check at normal threshold
+        if (currentTask is null)
+            return idleTime >= threshold;
+
+        // Active task but user idle for 3x threshold — they likely stepped away
+        return idleTime >= threshold * 3;
     }
 
     /// <summary>

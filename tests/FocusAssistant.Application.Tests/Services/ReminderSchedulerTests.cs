@@ -75,21 +75,22 @@ public sealed class ReminderSchedulerTests
     }
 
     [Fact]
-    public async Task IsIdleCheckInDue_WithActiveTask_ReturnsFalse()
+    public async Task IsIdleCheckInDue_WithActiveTask_ShortIdle_ReturnsFalse()
     {
         var (scheduler, tracking) = await CreateAsync();
 
-        // Very short threshold
+        // Threshold = 100ms → with active task, needs 300ms idle (3x)
         _prefsRepo.GetAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<UserPreferences?>(
-                new UserPreferences(idleCheckInThreshold: TimeSpan.FromMilliseconds(1))));
+                new UserPreferences(idleCheckInThreshold: TimeSpan.FromMilliseconds(100))));
 
         tracking.CreateTask("Active");
+        // Only 5ms idle — well below 3x threshold (300ms)
         await Task.Delay(5);
 
         var result = await scheduler.IsIdleCheckInDueAsync();
 
-        // Has an active task, so no idle check-in
+        // Has an active task and not idle enough (3x threshold), so no idle check-in
         Assert.False(result);
     }
 

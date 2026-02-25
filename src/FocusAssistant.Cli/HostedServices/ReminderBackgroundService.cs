@@ -23,6 +23,7 @@ public sealed class ReminderBackgroundService : BackgroundService
     private bool _reflectionPromptedToday;
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ReminderTimeout = TimeSpan.FromSeconds(30);
 
     public ReminderBackgroundService(
         ReminderScheduler scheduler,
@@ -72,9 +73,9 @@ public sealed class ReminderBackgroundService : BackgroundService
         if (await _scheduler.IsIdleCheckInDueAsync(ct))
         {
             _logger.LogDebug("Idle check-in triggered");
-            var response = await _agentSession.SendCommandAsync(
+            var response = await SendWithTimeoutAsync(
                 "[SYSTEM] The user has been idle for a while and has no active task. " +
-                "Gently ask what they're working on or suggest tasks they could resume.");
+                "Gently ask what they're working on or suggest tasks they could resume.", ct);
 
             if (!string.IsNullOrWhiteSpace(response))
             {
@@ -90,19 +91,42 @@ public sealed class ReminderBackgroundService : BackgroundService
             var taskNames = string.Join(", ", dueReminders.Select(r => $"'{r.TaskName}' (paused {r.PausedDuration.TotalMinutes:F0}m)"));
             _logger.LogDebug("Paused task reminders due: {Tasks}", taskNames);
 
-            var response = await _agentSession.SendCommandAsync(
+            var response = await SendWithTimeoutAsync(
                 $"[SYSTEM] Reminder: These paused tasks haven't been touched in a while: {taskNames}. " +
-                "Briefly mention them and ask if the user wants to switch to one.");
+                "Briefly mention them and ask if the user wants to switch to one.", ct);
 
             if (!string.IsNullOrWhiteSpace(response))
             {
                 await _output.SpeakAsync(response, ct);
+                // Acknowledge each reminded task for escalating suppression
+                foreach (var r in dueReminders)
+                    _scheduler.AcknowledgeReminder(r.TaskId);
                 _scheduler.RecordInteraction();
             }
         }
 
         // Check scheduled reflection time
         await CheckReflectionTimeAsync(ct);
+    }
+
+    /// <summary>
+    /// Sends a command to the agent with a timeout so a hung session
+    /// never blocks the entire reminder loop.
+    /// </summary>
+    private async Task<string> SendWithTimeoutAsync(string prompt, CancellationToken ct)
+    {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(ReminderTimeout);
+
+        try
+        {
+            return await _agentSession.SendCommandAsync(prompt, timeoutCts.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Reminder SendCommandAsync timed out after {Seconds}s", ReminderTimeout.TotalSeconds);
+            return string.Empty;
+        }
     }
 
     private async Task CheckReflectionTimeAsync(CancellationToken ct)
@@ -127,9 +151,9 @@ public sealed class ReminderBackgroundService : BackgroundService
             var reflectionResult = await _startReflection.ExecuteAsync(ct);
             if (reflectionResult.IsSuccess)
             {
-                var response = await _agentSession.SendCommandAsync(
+                var response = await SendWithTimeoutAsync(
                     $"[SYSTEM] It's reflection time! Here's the daily summary:\n{reflectionResult.Summary}\n" +
-                    "Present this to the user and guide them through setting priorities for tomorrow.");
+                    "Present this to the user and guide them through setting priorities for tomorrow.", ct);
 
                 if (!string.IsNullOrWhiteSpace(response))
                     await _output.SpeakAsync(response, ct);
