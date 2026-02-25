@@ -29,6 +29,11 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
     private static readonly TimeSpan SilenceTimeout = TimeSpan.FromSeconds(2);
 
     /// <summary>
+    /// Maximum time to wait for the user to start speaking before giving up.
+    /// </summary>
+    private static readonly TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(8);
+
+    /// <summary>
     /// Maximum recording duration per utterance to prevent runaway capture.
     /// </summary>
     private static readonly TimeSpan MaxRecordingDuration = TimeSpan.FromSeconds(30);
@@ -77,10 +82,28 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
         Process? captureProcess = null;
         try
         {
-            captureProcess = AudioCaptureHelper.StartCapture();
+            // Retry starting capture a few times — on Windows, DirectShow may
+            // still hold the device exclusively from the previous capture process.
+            const int maxStartAttempts = 3;
+            for (var startAttempt = 0; startAttempt < maxStartAttempts; startAttempt++)
+            {
+                captureProcess = AudioCaptureHelper.StartCapture();
+                if (captureProcess?.StandardOutput.BaseStream is not null)
+                    break;
+
+                _logger.LogWarning("Failed to start audio capture for STT (attempt {Attempt}/{Max})",
+                    startAttempt + 1, maxStartAttempts);
+
+                if (startAttempt < maxStartAttempts - 1)
+                {
+                    try { await Task.Delay(500, ct); }
+                    catch (OperationCanceledException) { return null; }
+                }
+            }
+
             if (captureProcess?.StandardOutput.BaseStream is null)
             {
-                _logger.LogError("Failed to start audio capture for STT");
+                _logger.LogError("Failed to start audio capture for STT after {Max} attempts", maxStartAttempts);
                 return null;
             }
 
@@ -93,8 +116,9 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
             var lastSpeechTime = DateTime.UtcNow;
             var startTime = DateTime.UtcNow;
             var hasSpeech = false;
+            var segments = new List<string>();
 
-            _logger.LogDebug("Listening for speech...");
+            _logger.LogInformation("Listening for speech...");
 
             while (!ct.IsCancellationRequested)
             {
@@ -103,6 +127,14 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
                 if (elapsed > MaxRecordingDuration)
                 {
                     _logger.LogDebug("Max recording duration reached");
+                    break;
+                }
+
+                // If no speech detected at all within InitialSilenceTimeout, stop waiting
+                if (!hasSpeech && elapsed > InitialSilenceTimeout)
+                {
+                    _logger.LogInformation("No speech detected within {Seconds}s — giving up",
+                        InitialSilenceTimeout.TotalSeconds);
                     break;
                 }
 
@@ -126,10 +158,15 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
 
                 if (recognizer.AcceptWaveform(buffer, bytesRead))
                 {
-                    // Final result for this utterance segment
+                    // AcceptWaveform returning true means a segment is finalized.
+                    // Result() returns and CONSUMES the text — we must save it now
+                    // because FinalResult() only returns text accumulated AFTER
+                    // the last Result() call.
                     var text = ExtractText(recognizer.Result());
                     if (!string.IsNullOrWhiteSpace(text))
                     {
+                        _logger.LogDebug("Segment recognized: {Text}", text);
+                        segments.Add(text);
                         hasSpeech = true;
                         lastSpeechTime = DateTime.UtcNow;
                     }
@@ -146,14 +183,19 @@ public sealed class SpeechToTextService : IVoiceInputService, IDisposable
                 }
             }
 
-            // Get final transcription
+            // Get any remaining text not yet consumed by Result()
             var finalText = ExtractText(recognizer.FinalResult());
             if (!string.IsNullOrWhiteSpace(finalText))
+                segments.Add(finalText);
+
+            if (segments.Count > 0)
             {
-                _logger.LogDebug("Transcribed: {Text}", finalText);
-                return finalText;
+                var fullText = string.Join(" ", segments);
+                _logger.LogInformation("Transcribed: {Text}", fullText);
+                return fullText;
             }
 
+            _logger.LogInformation("No speech transcribed");
             return null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

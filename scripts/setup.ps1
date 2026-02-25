@@ -63,7 +63,40 @@ if (Test-Path $ModelPath) {
     }
 }
 
-# --- 3. .NET SDK check ---
+# --- 3. GitHub CLI (gh) — required for Copilot authentication ---
+$ghCmd = Get-Command gh -ErrorAction SilentlyContinue
+if ($ghCmd) {
+    Write-Host "[OK] GitHub CLI is already installed ($($ghCmd.Source))" -ForegroundColor Green
+} else {
+    Write-Host '[*] Installing GitHub CLI via winget...' -ForegroundColor Yellow
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        winget install --id GitHub.cli -e --accept-source-agreements --accept-package-agreements
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host '[WARN] winget install failed. Install gh manually from https://cli.github.com' -ForegroundColor Red
+        } else {
+            Write-Host '[OK] GitHub CLI installed. You may need to restart your terminal for PATH changes.' -ForegroundColor Green
+        }
+    } else {
+        Write-Host '[ERROR] winget not found. Install gh manually from https://cli.github.com' -ForegroundColor Red
+        Write-Host '        Or: choco install gh  (if Chocolatey is installed)' -ForegroundColor Red
+    }
+}
+
+# Check gh auth status
+try {
+    $authOutput = & gh auth status 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host '[OK] GitHub CLI is authenticated' -ForegroundColor Green
+    } else {
+        Write-Host '[ACTION REQUIRED] Run "gh auth login" to authenticate with GitHub.' -ForegroundColor Red
+        Write-Host '         Copilot requires an authenticated GitHub account with a Copilot subscription.' -ForegroundColor Red
+    }
+} catch {
+    Write-Host '[ACTION REQUIRED] Run "gh auth login" to authenticate with GitHub.' -ForegroundColor Red
+}
+
+# --- 4. .NET SDK check ---
 $dotnetCmd = Get-Command dotnet -ErrorAction SilentlyContinue
 if ($dotnetCmd) {
     $dotnetVersion = & dotnet --version 2>$null
@@ -72,7 +105,7 @@ if ($dotnetCmd) {
     Write-Host '[WARN] .NET SDK not found. Install .NET 8+ from https://dotnet.microsoft.com/download' -ForegroundColor Red
 }
 
-# --- 4. Windows TTS check (built-in) ---
+# --- 5. Windows TTS check (built-in) ---
 Write-Host '[OK] Windows SAPI text-to-speech is built-in (System.Speech)' -ForegroundColor Green
 
 Write-Host ''

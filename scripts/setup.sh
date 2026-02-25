@@ -79,7 +79,40 @@ else
     fi
 fi
 
-# --- 3. .NET SDK check ---
+# --- 4. GitHub CLI (gh) — required for Copilot authentication ---
+if command -v gh &>/dev/null; then
+    echo "[OK] GitHub CLI is already installed ($(gh --version | head -1))"
+else
+    echo "[*] Installing GitHub CLI (gh)..."
+    if command -v apt-get &>/dev/null; then
+        # Official install per https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+        (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+            && sudo mkdir -p -m 755 /etc/apt/keyrings \
+            && out=$(mktemp) && wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli-stable.list > /dev/null \
+            && sudo apt update -qq && sudo apt install gh -y -qq
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y gh
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm github-cli
+    else
+        echo "[ERROR] Could not detect package manager. Install gh manually: https://cli.github.com"
+        exit 1
+    fi
+    echo "[OK] GitHub CLI installed"
+fi
+
+# Check gh auth status
+if gh auth status &>/dev/null; then
+    echo "[OK] GitHub CLI is authenticated"
+else
+    echo "[ACTION REQUIRED] Run 'gh auth login' to authenticate with GitHub."
+    echo "         Copilot requires an authenticated GitHub account with a Copilot subscription."
+fi
+
+# --- 5. .NET SDK check ---
 if command -v dotnet &>/dev/null; then
     echo "[OK] .NET SDK found ($(dotnet --version))"
 else

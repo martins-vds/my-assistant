@@ -112,10 +112,27 @@ public sealed class VoiceListenerService : BackgroundService
                     await _output.StopAsync(stoppingToken);
                 }
 
+                // Audio confirmation that wake word was heard
+                if (!_useTextMode)
+                {
+                    _logger.LogDebug("Wake word acknowledged — starting speech capture");
+                    await _output.SpeakAsync("I'm listening.", stoppingToken);
+
+                    // Brief delay to let the TTS finish and the audio device release
+                    // from the wake word detector's capture process (Windows DirectShow
+                    // requires exclusive device access).
+                    try { await Task.Delay(300, stoppingToken); }
+                    catch (OperationCanceledException) { break; }
+                }
+
                 // Capture speech
+                _logger.LogDebug("Capturing speech input...");
                 var userInput = await _input.ListenAsync(stoppingToken);
                 if (string.IsNullOrWhiteSpace(userInput))
+                {
+                    _logger.LogDebug("No speech captured — returning to wake word detection");
                     continue;
+                }
 
                 if (IsExitCommand(userInput))
                 {

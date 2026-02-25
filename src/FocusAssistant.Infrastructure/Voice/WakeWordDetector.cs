@@ -260,6 +260,9 @@ public sealed class WakeWordDetector : IWakeWordDetector
         try
         {
             process.Kill(entireProcessTree: true);
+            // Wait briefly for the process to exit so the audio device is released
+            // (Windows DirectShow requires exclusive access).
+            process.WaitForExit(1000);
             process.Dispose();
         }
         catch (Exception ex)

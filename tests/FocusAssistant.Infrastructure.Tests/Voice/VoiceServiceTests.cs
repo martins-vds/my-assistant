@@ -344,4 +344,73 @@ public class AudioCaptureHelperTests
         Assert.True(name == "arecord" || name == "ffmpeg",
             $"Unexpected tool name: {name}");
     }
+
+    [Fact]
+    public void ParseDirectShowAudioDevice_ExtractsDeviceFromTypicalOutput()
+    {
+        var output = @"[dshow @ 0000020f] DirectShow video devices (some may be both video and audio devices)
+[dshow @ 0000020f]  ""Integrated Webcam""
+[dshow @ 0000020f]     Alternative name ""@device_pnp_\\?\usb""
+[dshow @ 0000020f] DirectShow audio devices
+[dshow @ 0000020f]  ""Microphone (Realtek High Definition Audio)""
+[dshow @ 0000020f]     Alternative name ""@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}""
+";
+
+        var device = AudioCaptureHelper.ParseDirectShowAudioDevice(output);
+
+        Assert.Equal("Microphone (Realtek High Definition Audio)", device);
+    }
+
+    [Fact]
+    public void ParseDirectShowAudioDevice_ExtractsFromAudioTag()
+    {
+        var output = @"[dshow @ 0x1234] ""HD Microphone"" (audio)
+[dshow @ 0x1234] ""USB Camera"" (video)
+";
+
+        var device = AudioCaptureHelper.ParseDirectShowAudioDevice(output);
+
+        Assert.Equal("HD Microphone", device);
+    }
+
+    [Fact]
+    public void ParseDirectShowAudioDevice_ReturnsNullWhenNoAudioDevice()
+    {
+        var output = @"[dshow @ 0000020f] DirectShow video devices
+[dshow @ 0000020f]  ""Webcam""
+";
+
+        var device = AudioCaptureHelper.ParseDirectShowAudioDevice(output);
+
+        Assert.Null(device);
+    }
+
+    [Fact]
+    public void ParseDirectShowAudioDevice_ReturnsNullForEmptyInput()
+    {
+        Assert.Null(AudioCaptureHelper.ParseDirectShowAudioDevice(""));
+        Assert.Null(AudioCaptureHelper.ParseDirectShowAudioDevice(null!));
+    }
+
+    [Fact]
+    public void ParseDirectShowAudioDevice_HandlesMultipleAudioDevices_ReturnsFirst()
+    {
+        var output = @"[dshow @ 0x1] DirectShow audio devices
+[dshow @ 0x1]  ""Microphone Array (Intel)""
+[dshow @ 0x1]     Alternative name ""@device1""
+[dshow @ 0x1]  ""Line In (Realtek)""
+[dshow @ 0x1]     Alternative name ""@device2""
+";
+
+        var device = AudioCaptureHelper.ParseDirectShowAudioDevice(output);
+
+        Assert.Equal("Microphone Array (Intel)", device);
+    }
+
+    [Fact]
+    public void ClearDeviceCache_AllowsRedetection()
+    {
+        // Just verify it doesn't throw
+        AudioCaptureHelper.ClearDeviceCache();
+    }
 }

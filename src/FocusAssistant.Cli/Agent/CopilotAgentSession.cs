@@ -19,6 +19,12 @@ public sealed class CopilotAgentSession : IAsyncDisposable
     private bool _disposed;
 
     /// <summary>
+    /// Per-call state used to capture the assistant response from the event stream.
+    /// Set before SendAsync, completed by the SessionIdleEvent handler.
+    /// </summary>
+    private volatile PendingResponse? _pending;
+
+    /// <summary>
     /// Fired when the assistant produces a complete message.
     /// </summary>
     public event Action<string>? OnAssistantMessage;
@@ -43,22 +49,50 @@ public sealed class CopilotAgentSession : IAsyncDisposable
     {
         _logger.LogInformation("Initializing Copilot agent session...");
 
-        var options = new CopilotClientOptions();
-        _client = new CopilotClient(options);
-        await _client.StartAsync(ct);
+        _client = new CopilotClient(new CopilotClientOptions { Logger = _logger });
+
+        // Verify GitHub authentication before creating a session.
+        // Without auth the CLI accepts messages but never produces model responses.
+        await VerifyGitHubAuthAsync(ct);
 
         var systemPrompt = SystemPromptBuilder.Build();
 
         var config = new SessionConfig
         {
-            Model = "gpt-4o",
+            Model = "gpt-4.1",
             Tools = _tools.ToList(),
+            InfiniteSessions = new InfiniteSessionConfig
+            {
+                Enabled = true,
+                BackgroundCompactionThreshold = 0.80,
+                BufferExhaustionThreshold = 0.95
+            },
             SystemMessage = new SystemMessageConfig
             {
                 Mode = SystemMessageMode.Replace,
                 Content = systemPrompt
             },
             Streaming = true,
+            OnPermissionRequest = PermissionHandler.ApproveAll,
+            Hooks = new SessionHooks
+            {
+                OnPreToolUse = async (input, invocation) =>
+                {
+                    _logger.LogDebug("Pre-tool-use hook: allowing {ToolName}", input.ToolName);
+                    return new PreToolUseHookOutput
+                    {
+                        PermissionDecision = "allow"
+                    };
+                },
+                OnErrorOccurred = async (input, invocation) =>
+                {
+                    _logger.LogError("Hook error: {Context} - {Error}", input.ErrorContext, input.Error);
+                    return new ErrorOccurredHookOutput
+                    {
+                        ErrorHandling = "abort"
+                    };
+                }
+            },
             OnUserInputRequest = async (request, invocation) =>
             {
                 // This is called when the session needs user input (e.g. clarification).
@@ -70,7 +104,9 @@ public sealed class CopilotAgentSession : IAsyncDisposable
 
         _session = await _client.CreateSessionAsync(config, ct);
 
-        // Subscribe to session events for logging and streaming callbacks
+        // Subscribe to session events for logging, streaming, and response capture.
+        // The official SDK pattern is: SendAsync (fire-and-forget) → capture content
+        // from AssistantMessageEvent → signal completion on SessionIdleEvent.
         _eventSubscription = _session.On(evt =>
         {
             switch (evt)
@@ -78,9 +114,12 @@ public sealed class CopilotAgentSession : IAsyncDisposable
                 case AssistantMessageEvent messageEvt:
                     _logger.LogDebug("Assistant message: {Content}", messageEvt.Data.Content);
                     OnAssistantMessage?.Invoke(messageEvt.Data.Content);
+                    // Capture the response for the pending SendCommandAsync caller
+                    _pending?.SetContent(messageEvt.Data.Content);
                     break;
 
                 case AssistantMessageDeltaEvent deltaEvt:
+                    _logger.LogDebug("Assistant message delta: {DeltaContent}", deltaEvt.Data.DeltaContent);
                     if (deltaEvt.Data.DeltaContent is not null)
                         OnAssistantMessageDelta?.Invoke(deltaEvt.Data.DeltaContent);
                     break;
@@ -95,11 +134,26 @@ public sealed class CopilotAgentSession : IAsyncDisposable
 
                 case SessionIdleEvent:
                     _logger.LogDebug("Session is idle");
+                    // Session finished processing — unblock the SendCommandAsync caller
+                    _pending?.Complete();
                     break;
 
                 case SessionErrorEvent errorEvt:
                     _logger.LogError("Session error: {ErrorType} - {Message}",
                         errorEvt.Data.ErrorType, errorEvt.Data.Message);
+                    _pending?.Fault(
+                        new InvalidOperationException(
+                            $"Copilot error: {errorEvt.Data.ErrorType} - {errorEvt.Data.Message}"));
+                    break;
+
+                case PendingMessagesModifiedEvent:
+                    // Ephemeral housekeeping event — the CLI's internal message queue changed.
+                    // No action needed; just acknowledge so it doesn't hit the default/unhandled log.
+                    _logger.LogTrace("Pending messages modified");
+                    break;
+
+                default:
+                    _logger.LogDebug("Unhandled session event: {EventType}", evt.GetType().Name);
                     break;
             }
         });
@@ -108,8 +162,10 @@ public sealed class CopilotAgentSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Sends a text command to the Copilot session and returns the assistant's response.
-    /// SendAsync directly returns the response string.
+    /// Sends a text command to the Copilot session and returns the assistant's response text.
+    /// Uses the official SDK pattern: SendAsync (non-blocking) → capture content from
+    /// AssistantMessageEvent → await SessionIdleEvent as the completion signal.
+    /// This has no fixed timeout — it waits as long as the agent needs to execute tools.
     /// </summary>
     public async Task<string> SendCommandAsync(string text, CancellationToken ct = default)
     {
@@ -118,25 +174,35 @@ public sealed class CopilotAgentSession : IAsyncDisposable
 
         _logger.LogDebug("Sending command: {Command}", text);
 
-        // SendAsync returns Task<string> — the assistant's response text
-        var response = await _session.SendAsync(new MessageOptions { Prompt = text }, ct);
-        return response ?? string.Empty;
-    }
+        // Set up per-call state to capture the event-delivered response
+        var pending = new PendingResponse();
+        _pending = pending;
 
-    /// <summary>
-    /// Sends a text command and waits for the full AssistantMessageEvent.
-    /// Useful when you need metadata beyond just the text response.
-    /// </summary>
-    public async Task<AssistantMessageEvent?> SendAndWaitAsync(
-        string text, TimeSpan? timeout = null, CancellationToken ct = default)
-    {
-        if (_session is null)
-            throw new InvalidOperationException("Session not initialized. Call InitializeAsync first.");
+        // Register cancellation so we don't wait forever if the caller cancels
+        using var ctr = ct.Register(() => pending.Cancel(ct));
 
-        _logger.LogDebug("Sending command (wait): {Command}", text);
+        try
+        {
+            // SendAsync fires the request — response arrives via the On() event subscription
+            await _session.SendAsync(new MessageOptions { Prompt = text }, ct);
+            _logger.LogDebug("SendAsync completed, waiting for session idle...");
 
-        return await _session.SendAndWaitAsync(
-            new MessageOptions { Prompt = text }, timeout, ct);
+            // Wait for SessionIdleEvent to signal completion (or error/cancellation)
+            var content = await pending.Task;
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                _logger.LogWarning("Copilot returned empty response for command: {Command}", text);
+                return string.Empty;
+            }
+
+            _logger.LogDebug("Copilot response: {Response}", content);
+            return content;
+        }
+        finally
+        {
+            _pending = null;
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -169,5 +235,54 @@ public sealed class CopilotAgentSession : IAsyncDisposable
                 _logger.LogWarning(ex, "Error stopping client");
             }
         }
+    }
+
+    /// <summary>
+    /// Verifies that the Copilot CLI can authenticate with GitHub.
+    /// Calls ListModelsAsync which requires a valid auth token.
+    /// Throws a clear error message if auth is missing.
+    /// </summary>
+    private async Task VerifyGitHubAuthAsync(CancellationToken ct)
+    {
+        _logger.LogDebug("Verifying GitHub authentication...");
+        try
+        {
+            var models = await _client!.ListModelsAsync(ct);
+            if (models is null || models.Count == 0)
+            {
+                _logger.LogWarning("No models returned — Copilot subscription may be inactive");
+            }
+            else
+            {
+                _logger.LogInformation("GitHub auth OK — {Count} models available", models.Count);
+            }
+        }
+        catch (Exception ex) when (ex.InnerException?.Message?.Contains("Not authenticated", StringComparison.OrdinalIgnoreCase) == true
+                                 || ex.Message.Contains("Not authenticated", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "GitHub Copilot is not authenticated. Please run 'gh auth login' first, then retry.", ex);
+        }
+    }
+
+    /// <summary>
+    /// Holds per-call state for capturing the assistant response from the event stream.
+    /// Content is set by AssistantMessageEvent, completion signalled by SessionIdleEvent.
+    /// </summary>
+    private sealed class PendingResponse
+    {
+        private readonly TaskCompletionSource<string> _tcs =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private string? _content;
+
+        public Task<string> Task => _tcs.Task;
+
+        public void SetContent(string content) => _content = content;
+
+        public void Complete() => _tcs.TrySetResult(_content ?? string.Empty);
+
+        public void Fault(Exception ex) => _tcs.TrySetException(ex);
+
+        public void Cancel(CancellationToken ct) => _tcs.TrySetCanceled(ct);
     }
 }
