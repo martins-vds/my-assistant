@@ -115,7 +115,7 @@ public sealed class ReminderScheduler
             return false;
 
         var prefs = await _preferencesRepository.GetAsync(ct);
-        var threshold = prefs?.IdleCheckInThreshold ?? TimeSpan.FromMinutes(15);
+        var threshold = prefs?.IdleCheckInThreshold ?? TimeSpan.FromMinutes(5);
 
         var idleTime = GetIdleTime();
         var currentTask = _tracking.GetCurrentTask();

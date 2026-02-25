@@ -11,7 +11,7 @@ public class UserPreferencesTests
         var prefs = new UserPreferences();
 
         Assert.Equal(ReminderInterval.Default.Duration, prefs.DefaultReminderInterval.Duration);
-        Assert.Equal(TimeSpan.FromMinutes(15), prefs.IdleCheckInThreshold);
+        Assert.Equal(TimeSpan.FromMinutes(5), prefs.IdleCheckInThreshold);
         Assert.Null(prefs.AutomaticReflectionTime);
         Assert.Equal("Hey Focus", prefs.WakeWord);
         Assert.NotEqual(Guid.Empty, prefs.Id);

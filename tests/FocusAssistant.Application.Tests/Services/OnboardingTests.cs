@@ -87,7 +87,7 @@ public class SavePreferencesUseCaseTests
         Assert.True(result.IsSuccess);
         await _prefsRepo.Received(1).SaveAsync(Arg.Is<UserPreferences>(p =>
             p.DefaultReminderInterval == ReminderInterval.Default &&
-            p.IdleCheckInThreshold == TimeSpan.FromMinutes(15) &&
+            p.IdleCheckInThreshold == TimeSpan.FromMinutes(5) &&
             p.WakeWord == "Hey Focus"), Arg.Any<CancellationToken>());
     }
 
@@ -96,7 +96,7 @@ public class SavePreferencesUseCaseTests
     {
         var existing = new UserPreferences(
             defaultReminderInterval: new ReminderInterval(TimeSpan.FromMinutes(60)),
-            idleCheckInThreshold: TimeSpan.FromMinutes(15));
+            idleCheckInThreshold: TimeSpan.FromMinutes(5));
         _prefsRepo.GetAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<UserPreferences?>(existing));
         _prefsRepo.SaveAsync(Arg.Any<UserPreferences>(), Arg.Any<CancellationToken>())

@@ -30,7 +30,7 @@ public sealed class UserPreferences
 
         Id = Guid.NewGuid();
         DefaultReminderInterval = defaultReminderInterval ?? ReminderInterval.Default;
-        IdleCheckInThreshold = idleCheckInThreshold ?? TimeSpan.FromMinutes(15);
+        IdleCheckInThreshold = idleCheckInThreshold ?? TimeSpan.FromMinutes(5);
         AutomaticReflectionTime = automaticReflectionTime;
         WakeWord = wakeWord.Trim();
         CreatedAt = DateTime.UtcNow;
