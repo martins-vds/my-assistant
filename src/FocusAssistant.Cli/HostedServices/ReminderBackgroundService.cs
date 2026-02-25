@@ -45,8 +45,13 @@ public sealed class ReminderBackgroundService : BackgroundService
     {
         _logger.LogInformation("Reminder background service starting...");
 
-        // Give the main voice listener time to initialize
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        // Wait for the agent session to be initialized by VoiceListenerService
+        while (!stoppingToken.IsCancellationRequested && !_agentSession.IsInitialized)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+        }
+
+        _logger.LogInformation("Agent session ready — reminder service active");
 
         while (!stoppingToken.IsCancellationRequested)
         {

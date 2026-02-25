@@ -19,6 +19,13 @@ public sealed class CopilotAgentSession : IAsyncDisposable
     private bool _disposed;
 
     /// <summary>
+    /// Serializes access to SendCommandAsync so concurrent callers
+    /// (VoiceListenerService + ReminderBackgroundService) don't overwrite each other's
+    /// pending response state.
+    /// </summary>
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
+
+    /// <summary>
     /// Per-call state used to capture the assistant response from the event stream.
     /// Set before SendAsync, completed by the SessionIdleEvent handler.
     /// </summary>
@@ -33,6 +40,12 @@ public sealed class CopilotAgentSession : IAsyncDisposable
     /// Fired for each streaming delta chunk (for real-time TTS).
     /// </summary>
     public event Action<string>? OnAssistantMessageDelta;
+
+    /// <summary>
+    /// True once InitializeAsync has completed successfully.
+    /// Checked by background services before attempting to send commands.
+    /// </summary>
+    public bool IsInitialized => _session is not null;
 
     public CopilotAgentSession(
         ILogger<CopilotAgentSession> logger,
@@ -172,6 +185,20 @@ public sealed class CopilotAgentSession : IAsyncDisposable
         if (_session is null)
             throw new InvalidOperationException("Session not initialized. Call InitializeAsync first.");
 
+        // Serialize concurrent callers to prevent _pending field races
+        await _sendLock.WaitAsync(ct);
+        try
+        {
+            return await SendCommandCoreAsync(text, ct);
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+    }
+
+    private async Task<string> SendCommandCoreAsync(string text, CancellationToken ct)
+    {
         _logger.LogDebug("Sending command: {Command}", text);
 
         // Set up per-call state to capture the event-delivered response
@@ -184,7 +211,7 @@ public sealed class CopilotAgentSession : IAsyncDisposable
         try
         {
             // SendAsync fires the request — response arrives via the On() event subscription
-            await _session.SendAsync(new MessageOptions { Prompt = text }, ct);
+            await _session!.SendAsync(new MessageOptions { Prompt = text }, ct);
             _logger.LogDebug("SendAsync completed, waiting for session idle...");
 
             // Wait for SessionIdleEvent to signal completion (or error/cancellation)
@@ -211,6 +238,7 @@ public sealed class CopilotAgentSession : IAsyncDisposable
         _disposed = true;
 
         _eventSubscription?.Dispose();
+        _sendLock.Dispose();
 
         if (_session is not null)
         {
